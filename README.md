@@ -26,7 +26,7 @@ npm run dev
 Copy `.env.example` to `.env` and configure:
 
 ```
-VITE_BLACKBOX_URL=https://blackbox.ghostlogic.tech
+VITE_BLACKBOX_URL=https://api.ghostlogic.tech
 ```
 
 For local backend development, point to your VM:
