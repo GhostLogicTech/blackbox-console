@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-app-bg: #09090b;
+  --color-app-surface: #121214;
+  --color-app-surface-2: #1c1c1f;
+  --color-app-border: #27272a;
+  --color-app-text-primary: #ffffff;
+  --color-app-text-secondary: #a1a1aa;
+  --color-app-teal-accent: #2dd4bf;
+  --color-app-red-alert: #ef4444;
+
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
+  /* Typography Sizes */
+  --font-size-h1: 36px;
+  --font-size-h2: 24px;
+  --font-size-h3: 18px;
+  --font-size-body: 14px;
+  --font-size-small: 12px;
+  --font-size-mono: 13px;
+}
+
+@layer base {
+  body {
+    @apply bg-app-bg text-app-text-primary font-sans antialiased;
+  }
+
+  h1 { @apply text-[length:--font-size-h1] font-bold tracking-tight; }
+  h2 { @apply text-[length:--font-size-h2] font-bold; }
+  h3 { @apply text-[length:--font-size-h3] font-bold; }
+  p { @apply text-[length:--font-size-body] text-app-text-secondary; }
+}
+
+@layer components {
+  .glass-border {
+    @apply border border-white/5 backdrop-blur-md;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(45,212,191,0.15)];
+  }
+
+  .card-shadow {
+    @apply shadow-[0_4px_24px_rgba(0,0,0,0.5)];
+  }
+}

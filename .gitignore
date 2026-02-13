@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+*.local
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.d.ts.map
+.DS_Store
+Thumbs.db
