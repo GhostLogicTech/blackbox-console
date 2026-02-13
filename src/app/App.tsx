@@ -10,14 +10,17 @@ import { Admin } from './components/Admin';
 import { Settings } from './components/Settings';
 import { CapsuleDetail } from './components/CapsuleDetail';
 import { CommandPalette } from './components/CommandPalette';
+import { Onboarding } from './components/Onboarding';
 import { Toaster } from 'sonner';
 import { AnimatePresence, motion } from 'motion/react';
+import { hasTenantKey } from '../api/client';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [selectedCapsuleId, setSelectedCapsuleId] = useState<string | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(hasTenantKey());
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -50,6 +53,15 @@ const App: React.FC = () => {
       default: return <Dashboard />;
     }
   };
+
+  if (!authenticated) {
+    return (
+      <>
+        <Toaster theme="dark" position="top-right" />
+        <Onboarding onComplete={() => setAuthenticated(true)} />
+      </>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-app-bg text-app-text-primary overflow-hidden font-sans selection:bg-app-teal-accent/30 selection:text-app-teal-accent">
