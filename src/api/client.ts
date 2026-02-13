@@ -1,4 +1,4 @@
-const BASE_URL = (import.meta.env.VITE_BLACKBOX_URL || 'https://blackbox.ghostlogic.tech').replace(/\/$/, '');
+const BASE_URL = (import.meta.env.VITE_BLACKBOX_URL || 'https://api.ghostlogic.tech').replace(/\/$/, '');
 
 function getTenantKey(): string | null {
   return localStorage.getItem('blackbox_tenant_key');
