@@ -9,6 +9,7 @@ import { Capsules } from './components/Capsules';
 import { Admin } from './components/Admin';
 import { Settings } from './components/Settings';
 import { CapsuleDetail } from './components/CapsuleDetail';
+import { Agent } from './components/Agent';
 import { CommandPalette } from './components/CommandPalette';
 import { Onboarding } from './components/Onboarding';
 import { Toaster } from 'sonner';
@@ -32,7 +33,10 @@ const App: React.FC = () => {
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleSelectCapsule = (id: string) => {
@@ -48,6 +52,7 @@ const App: React.FC = () => {
       case 'capsules': return <Capsules onSelectCapsule={handleSelectCapsule} />;
       case 'admin': return <Admin />;
       case 'settings': return <Settings />;
+      case 'agent': return <Agent onNavigate={setActiveTab} />;
       case 'capsule-detail':
         return <CapsuleDetail id={selectedCapsuleId || ''} onBack={() => setActiveTab('capsules')} />;
       default: return <Dashboard />;

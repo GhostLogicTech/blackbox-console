@@ -8,7 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Terminal,
-  Lock
+  Lock,
+  Cpu
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from './ui/Library';
@@ -27,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, colla
     { id: 'ingest', label: 'Ingest Events', icon: Upload },
     { id: 'seal', label: 'Seal Capsule', icon: ShieldCheck },
     { id: 'capsules', label: 'Capsule Vault', icon: Database },
+    { id: 'agent', label: 'Agent', icon: Cpu },
     ...(hasAdminKey() ? [{ id: 'admin', label: 'Admin Panel', icon: Lock }] : []),
     { id: 'settings', label: 'System Settings', icon: Settings },
   ];
