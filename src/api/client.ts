@@ -241,6 +241,36 @@ export async function downloadCapsule(capsuleId: string): Promise<Blob | null> {
   }
 }
 
+// ── Live telemetry endpoints ──
+
+export async function getEndpoints() {
+  return request<{
+    endpoints: Array<{
+      endpoint_name: string;
+      agent_id: string;
+      first_seen: string;
+      last_seen: string;
+      event_count: number;
+      latest: Record<string, Record<string, unknown>>;
+    }>;
+    count: number;
+  }>('/api/v1/endpoints', {}, 'tenant');
+}
+
+export async function getRecentEvents(limit: number = 50) {
+  return request<{
+    events: Array<{
+      event_type: string;
+      endpoint: string;
+      agent_id: string;
+      timestamp: string;
+      ingested_at: string;
+      data: Record<string, unknown>;
+    }>;
+    count: number;
+  }>(`/api/v1/buffer/recent?limit=${limit}`, {}, 'tenant');
+}
+
 // ── Admin endpoints ──
 
 export async function adminListCapsules(limit: number = 100, offset: number = 0) {
