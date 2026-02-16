@@ -81,68 +81,70 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-app-bg text-app-text-primary overflow-hidden font-sans selection:bg-app-teal-accent/30 selection:text-app-teal-accent">
-      <Toaster theme="dark" position="top-right" />
-
+    <>
       <AnimatePresence>
         {!isInitialized && (
           <SetupProtocol onComplete={handleInitializationComplete} />
         )}
       </AnimatePresence>
 
-      {isInitialized && (
-        <>
-          <CommandPalette
-            isOpen={isCommandPaletteOpen}
-            onClose={() => setIsCommandPaletteOpen(false)}
-            onSelect={(id) => { setActiveTab(id); setIsCommandPaletteOpen(false); }}
-          />
+      <div className="flex h-screen bg-app-bg text-app-text-primary overflow-hidden font-sans selection:bg-app-teal-accent/30 selection:text-app-teal-accent">
+        <Toaster theme="dark" position="top-right" />
 
-          <Sidebar
-            activeTab={resolvedSidebarTab}
-            setActiveTab={setActiveTab}
-            collapsed={collapsed}
-            setCollapsed={setCollapsed}
-          />
-
-          <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
-            <Header
-              isAdmin={isAdmin}
-              onNavigate={setActiveTab}
-              onClearKey={handleClearKey}
+        {isInitialized && (
+          <>
+            <CommandPalette
+              isOpen={isCommandPaletteOpen}
+              onClose={() => setIsCommandPaletteOpen(false)}
+              onSelect={(id) => { setActiveTab(id); setIsCommandPaletteOpen(false); }}
             />
 
-            <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-5 md:py-10 pb-20 md:pb-10 scrollbar-hide">
-              <div className="max-w-7xl mx-auto">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab === 'capsule-detail' ? `detail-${selectedCapsuleId}` : activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="h-full"
-                  >
-                    {renderContent()}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </main>
+            <Sidebar
+              activeTab={resolvedSidebarTab}
+              setActiveTab={setActiveTab}
+              collapsed={collapsed}
+              setCollapsed={setCollapsed}
+            />
 
-            <MobileNav activeTab={resolvedSidebarTab} setActiveTab={setActiveTab} />
+            <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
+              <Header
+                isAdmin={isAdmin}
+                onNavigate={setActiveTab}
+                onClearKey={handleClearKey}
+              />
 
-            <footer className="hidden sm:flex h-8 border-t border-app-border bg-app-bg items-center justify-between px-8 text-[9px] text-app-text-secondary font-mono tracking-widest uppercase">
-              <div className="flex gap-4">
-                <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-app-teal-accent" /> System Optimal</span>
-              </div>
-              <div className="flex items-center gap-6">
-                <span>v2.4.0</span>
-              </div>
-            </footer>
-          </div>
-        </>
-      )}
-    </div>
+              <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-5 md:py-10 pb-20 md:pb-10 scrollbar-hide">
+                <div className="max-w-7xl mx-auto">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeTab === 'capsule-detail' ? `detail-${selectedCapsuleId}` : activeTab}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                      className="h-full"
+                    >
+                      {renderContent()}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </main>
+
+              <MobileNav activeTab={resolvedSidebarTab} setActiveTab={setActiveTab} />
+
+              <footer className="hidden sm:flex h-8 border-t border-app-border bg-app-bg items-center justify-between px-8 text-[9px] text-app-text-secondary font-mono tracking-widest uppercase">
+                <div className="flex gap-4">
+                  <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-app-teal-accent" /> System Optimal</span>
+                </div>
+                <div className="flex items-center gap-6">
+                  <span>v2.4.0</span>
+                </div>
+              </footer>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 };
 
