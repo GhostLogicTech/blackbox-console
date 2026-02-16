@@ -69,6 +69,7 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
   const handleCopy = (cmd: string) => {
     navigator.clipboard.writeText(cmd);
     setCopiedCmd(cmd);
+    toast.success('Copied — paste into your terminal', { duration: 3000 });
     setTimeout(() => setCopiedCmd(null), 2000);
   };
 
