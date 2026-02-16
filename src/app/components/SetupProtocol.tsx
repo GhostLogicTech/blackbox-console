@@ -13,6 +13,35 @@ interface SetupProtocolProps {
   onComplete: () => void;
 }
 
+type Platform = 'windows' | 'linux' | 'macos';
+
+const platformSteps: Record<Platform, { label: string; steps: { desc: string; cmd: string }[] }> = {
+  windows: {
+    label: 'Windows',
+    steps: [
+      { desc: 'Install Python (if not installed)', cmd: 'winget install Python.Python.3.12' },
+      { desc: 'Restart your terminal, then install the agent', cmd: 'pip install ghostlogic-agent' },
+      { desc: 'Run the agent', cmd: 'ghostlogic-agent' },
+    ],
+  },
+  macos: {
+    label: 'macOS',
+    steps: [
+      { desc: 'Install Python via Homebrew', cmd: 'brew install python' },
+      { desc: 'Install the agent', cmd: 'pip3 install ghostlogic-agent' },
+      { desc: 'Run the agent', cmd: 'ghostlogic-agent' },
+    ],
+  },
+  linux: {
+    label: 'Linux',
+    steps: [
+      { desc: 'Make sure Python 3 and pip are installed', cmd: 'sudo apt install python3 python3-pip -y' },
+      { desc: 'Install the agent', cmd: 'pip3 install ghostlogic-agent' },
+      { desc: 'Run the agent', cmd: 'ghostlogic-agent' },
+    ],
+  },
+};
+
 export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
   const [step, setStep] = useState(1);
   const [apiKey, setApiKey] = useState('');
@@ -21,7 +50,13 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
   const [tenantInfo, setTenantInfo] = useState<{ tenant_id: string; name: string } | null>(null);
   const [endpointData, setEndpointData] = useState<any[]>([]);
   const [isPolling, setIsPolling] = useState(false);
-  const [copiedInstall, setCopiedInstall] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<Platform>(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('win')) return 'windows';
+    if (ua.includes('mac')) return 'macos';
+    return 'linux';
+  });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Clean up polling on unmount
@@ -31,10 +66,10 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
     };
   }, []);
 
-  const handleCopyInstall = () => {
-    navigator.clipboard.writeText('pip install ghostlogic-agent && ghostlogic-agent');
-    setCopiedInstall(true);
-    setTimeout(() => setCopiedInstall(false), 2000);
+  const handleCopy = (cmd: string) => {
+    navigator.clipboard.writeText(cmd);
+    setCopiedCmd(cmd);
+    setTimeout(() => setCopiedCmd(null), 2000);
   };
 
   const handleVerifyKey = async () => {
@@ -113,39 +148,53 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
         <AnimatePresence mode="wait">
           {/* Step 1: Install Agent */}
           {step === 1 && (
-            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Install the Agent</h1>
-                <p className="mt-3 text-zinc-500 text-lg">Run the GhostLogic agent on any machine you want to monitor.</p>
+                <p className="mt-3 text-zinc-500 text-lg">Follow the steps below for your OS. The agent prints your API key on first run.</p>
               </div>
 
+              {/* Platform selector */}
+              <div className="flex gap-2">
+                {(Object.keys(platformSteps) as Platform[]).map((p) => {
+                  const Icon = p === 'windows' ? Monitor : p === 'linux' ? Server : Globe;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPlatform(p)}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all",
+                        platform === p
+                          ? "bg-app-teal-accent/10 text-app-teal-accent border-app-teal-accent/30"
+                          : "bg-app-surface-2 text-zinc-500 border-app-border hover:text-zinc-300 hover:border-zinc-600"
+                      )}
+                    >
+                      <Icon size={16} />
+                      {platformSteps[p].label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Step-by-step commands */}
               <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <TerminalIcon size={18} className="text-app-teal-accent" />
-                  <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Quick Install</span>
-                </div>
-                <div className="bg-black rounded-xl p-3 sm:p-4 font-mono text-xs sm:text-sm text-app-teal-accent flex items-center justify-between gap-2">
-                  <code className="overflow-x-auto whitespace-nowrap scrollbar-hide">pip install ghostlogic-agent && ghostlogic-agent</code>
-                  <button onClick={handleCopyInstall} className="shrink-0 p-2 text-zinc-500 hover:text-white transition-colors">
-                    {copiedInstall ? <Check size={16} className="text-app-teal-accent" /> : <Copy size={16} />}
-                  </button>
-                </div>
-                <p className="text-xs text-zinc-600">The agent auto-registers with api.ghostlogic.tech and prints your API key on first run.</p>
-              </div>
-
-              <div className="flex flex-wrap gap-3 sm:gap-4">
-                <div className="flex-1 min-w-[5.5rem] bg-app-surface-2 border border-app-border rounded-xl p-3 sm:p-4 text-center">
-                  <Monitor size={20} className="mx-auto text-zinc-500 mb-2" />
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase">Windows</p>
-                </div>
-                <div className="flex-1 min-w-[5.5rem] bg-app-surface-2 border border-app-border rounded-xl p-3 sm:p-4 text-center">
-                  <Server size={20} className="mx-auto text-zinc-500 mb-2" />
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase">Linux</p>
-                </div>
-                <div className="flex-1 min-w-[5.5rem] bg-app-surface-2 border border-app-border rounded-xl p-3 sm:p-4 text-center">
-                  <Globe size={20} className="mx-auto text-zinc-500 mb-2" />
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase">macOS</p>
-                </div>
+                {platformSteps[platform].steps.map((s, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-app-teal-accent/15 flex items-center justify-center text-[10px] font-bold text-app-teal-accent shrink-0">
+                        {i + 1}
+                      </div>
+                      <span className="text-xs text-zinc-400">{s.desc}</span>
+                    </div>
+                    <div className="bg-black rounded-lg p-3 font-mono text-xs sm:text-sm text-app-teal-accent flex items-center justify-between gap-2 ml-7">
+                      <code className="overflow-x-auto whitespace-nowrap scrollbar-hide">{s.cmd}</code>
+                      <button onClick={() => handleCopy(s.cmd)} className="shrink-0 p-1.5 text-zinc-500 hover:text-white transition-colors">
+                        {copiedCmd === s.cmd ? <Check size={14} className="text-app-teal-accent" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-zinc-600 ml-7 pt-1">Copy your API key from the terminal output after the agent starts.</p>
               </div>
 
               <div className="flex justify-end">
