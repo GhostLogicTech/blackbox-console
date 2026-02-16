@@ -6,16 +6,16 @@
   --color-app-border: #27272a;
   --color-app-text-primary: #ffffff;
   --color-app-text-secondary: #a1a1aa;
-  --color-app-teal-accent: #2dd4bf;
+  --color-app-teal-accent: #34d399;
   --color-app-red-alert: #ef4444;
 
-  /* App Spacing Scale (prefixed to avoid overriding Tailwind's max-w-sm/md/lg/xl/2xl) */
-  --spacing-app-xs: 4px;
-  --spacing-app-sm: 8px;
-  --spacing-app-md: 12px;
-  --spacing-app-lg: 16px;
-  --spacing-app-xl: 24px;
-  --spacing-app-2xl: 32px;
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
 
   /* Typography Sizes */
   --font-size-h1: 36px;
@@ -41,12 +41,20 @@
   .glass-border {
     @apply border border-white/5 backdrop-blur-md;
   }
-  
+
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(45,212,191,0.15)];
+    @apply transition-all duration-300 hover:shadow-[0_0_24px_rgba(52,211,153,0.12)];
   }
 
   .card-shadow {
     @apply shadow-[0_4px_24px_rgba(0,0,0,0.5)];
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

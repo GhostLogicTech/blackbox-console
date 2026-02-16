@@ -1,31 +1,31 @@
 const BASE_URL = (import.meta.env.VITE_BLACKBOX_URL || 'https://api.ghostlogic.tech').replace(/\/$/, '');
 
-function getTenantKey(): string | null {
+export function getTenantKey(): string | null {
   return localStorage.getItem('blackbox_tenant_key');
 }
 
-function getAdminKey(): string | null {
+export function getAdminKey(): string | null {
   return localStorage.getItem('blackbox_admin_key');
 }
 
-function setTenantKey(key: string) {
+export function setTenantKey(key: string) {
   localStorage.setItem('blackbox_tenant_key', key);
 }
 
-function setAdminKey(key: string) {
+export function setAdminKey(key: string) {
   localStorage.setItem('blackbox_admin_key', key);
 }
 
-function clearKeys() {
+export function clearKeys() {
   localStorage.removeItem('blackbox_tenant_key');
   localStorage.removeItem('blackbox_admin_key');
 }
 
-function hasAdminKey(): boolean {
+export function hasAdminKey(): boolean {
   return !!getAdminKey();
 }
 
-function hasTenantKey(): boolean {
+export function hasTenantKey(): boolean {
   return !!getTenantKey();
 }
 
@@ -332,16 +332,45 @@ export async function adminRevokeKey(keyId: string) {
   }, 'admin');
 }
 
-// ── Key management exports ──
+export async function adminRotateKey(keyId: string) {
+  return request<{
+    api_key: string;
+    key_id: string;
+    tenant_id: string;
+    name: string;
+    created_at: string;
+  }>(`/api/v1/keys/${keyId}/rotate`, {
+    method: 'POST',
+  }, 'admin');
+}
 
-export {
-  getTenantKey,
-  getAdminKey,
-  setTenantKey,
-  setAdminKey,
-  clearKeys,
-  hasAdminKey,
-  hasTenantKey,
-};
+export async function adminListKeysForTenant(tenantId: string) {
+  return request<{
+    keys: Array<{
+      key_id: string;
+      tenant_id: string;
+      name: string;
+      created_at: string;
+      last_used_at: string | null;
+      active: boolean;
+    }>;
+    tenant_id: string;
+  }>(`/api/v1/keys/tenant/${tenantId}`, {}, 'admin');
+}
+
+// ── Registration (no auth) ──
+
+export async function registerAgent(name: string) {
+  return request<{
+    api_key: string;
+    key_id: string;
+    tenant_id: string;
+    name: string;
+    created_at: string;
+  }>('/api/v1/register', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
 
 export { BASE_URL };

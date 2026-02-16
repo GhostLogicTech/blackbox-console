@@ -29,10 +29,10 @@ Copy `.env.example` to `.env` and configure:
 VITE_BLACKBOX_URL=https://api.ghostlogic.tech
 ```
 
-For local backend development, point to your VM:
+For local backend development, point to your local VM:
 
 ```
-VITE_BLACKBOX_URL=https://131.186.2.15:8443
+VITE_BLACKBOX_URL=https://localhost:8443
 ```
 
 ## Build

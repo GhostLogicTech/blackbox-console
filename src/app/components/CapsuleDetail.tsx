@@ -1,19 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ArrowLeft,
-  ShieldCheck,
-  Clock,
-  HardDrive,
-  CheckCircle2,
-  Download,
-  Lock,
-  RefreshCw,
-  XCircle
-} from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Download, Calendar, Layers, Hash, Clock, FileText } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Button, Badge, cn } from './ui/Library';
 import { HashDisplay } from './HashDisplay';
-import { getCapsule, verifyCapsule, downloadCapsule, hasTenantKey } from '../../api/client';
 import { toast } from 'sonner';
+import { getCapsule, verifyCapsule, downloadCapsule } from '../../api/client';
 
 interface CapsuleDetailProps {
   id: string;
@@ -21,31 +12,34 @@ interface CapsuleDetailProps {
 }
 
 export const CapsuleDetail: React.FC<CapsuleDetailProps> = ({ id, onBack }) => {
-  const [manifest, setManifest] = useState<any>(null);
-  const [verification, setVerification] = useState<any>(null);
+  const [capsule, setCapsule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<any>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
-    if (!hasTenantKey()) { setLoading(false); return; }
-    getCapsule(id).then(res => {
-      if (res.ok) setManifest(res.data);
-      else toast.error(res.error || 'Failed to load capsule');
+    const fetch = async () => {
+      const res = await getCapsule(id);
+      if (res.ok && res.data) setCapsule(res.data);
       setLoading(false);
-    });
+    };
+    fetch();
   }, [id]);
 
   const handleVerify = async () => {
-    setVerifying(true);
+    setIsVerifying(true);
     const res = await verifyCapsule(id);
-    setVerifying(false);
-    if (res.ok) {
-      setVerification(res.data);
-      if (res.data!.integrity) toast.success('Integrity verified');
-      else toast.error('Integrity check FAILED');
+    if (res.ok && res.data) {
+      setVerifyResult(res.data);
+      if (res.data.integrity) {
+        toast.success('Integrity verified');
+      } else {
+        toast.error('INTEGRITY CHECK FAILED');
+      }
     } else {
       toast.error(res.error || 'Verification failed');
     }
+    setIsVerifying(false);
   };
 
   const handleDownload = async () => {
@@ -58,7 +52,7 @@ export const CapsuleDetail: React.FC<CapsuleDetailProps> = ({ id, onBack }) => {
       a.download = `${id}.glcf.gz`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Downloaded');
+      toast.success('Download complete');
     } else {
       toast.error('Download failed');
     }
@@ -66,129 +60,101 @@ export const CapsuleDetail: React.FC<CapsuleDetailProps> = ({ id, onBack }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <RefreshCw className="w-8 h-8 text-zinc-600 animate-spin" />
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-app-teal-accent/30 border-t-app-teal-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!capsule) {
+    return (
+      <div className="space-y-6">
+        <button onClick={onBack} className="p-2.5 rounded-xl bg-app-surface-2 border border-app-border text-zinc-400 hover:text-white transition-all"><ArrowLeft size={18} /></button>
+        <p className="text-zinc-500">Capsule not found</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-      <div className="flex items-center gap-4 flex-wrap">
-        <button onClick={onBack} className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all">
-          <ArrowLeft size={20} />
-        </button>
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
+      <div className="flex items-center gap-3 md:gap-4">
+        <button onClick={onBack} className="p-2 md:p-2.5 rounded-xl bg-app-surface-2 border border-app-border text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"><ArrowLeft size={18} /></button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl md:text-3xl font-bold text-white font-mono truncate">{id}</h1>
-          <p className="text-zinc-500 text-sm mt-1">Forensic Capsule Detail & Integrity</p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={handleDownload} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 text-white font-bold text-sm border border-zinc-700 hover:bg-zinc-700 transition-all">
-            <Download size={16} /> Download
-          </button>
-          <button
-            onClick={handleVerify}
-            disabled={verifying}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 text-black font-bold text-sm hover:bg-teal-400 transition-all shadow-[0_0_20px_rgba(45,212,191,0.2)] disabled:opacity-50"
-          >
-            {verifying ? <RefreshCw size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-            Verify Integrity
-          </button>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl md:text-3xl font-bold text-white truncate font-mono">{capsule.capsule_id.slice(0, 16)}...</h1>
+            {verifyResult && <Badge variant={verifyResult.integrity ? 'success' : 'danger'}>{verifyResult.integrity ? 'Verified' : 'Failed'}</Badge>}
+          </div>
+          <p className="text-xs md:text-sm font-mono text-zinc-500 mt-1">Sealed {new Date(capsule.sealed_at).toLocaleString()}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {/* Integrity Section */}
-          <section className="p-6 rounded-2xl bg-[#121214] border border-zinc-800 space-y-6">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Lock className="w-5 h-5 text-teal-400" /> Cryptographic Integrity
-            </h3>
-            {manifest?.hashes ? (
-              <div className="space-y-4">
-                <HashDisplay label="Content SHA-256" hash={manifest.hashes.content_sha256} verified={verification?.content_integrity} />
-                <HashDisplay label="File SHA-256" hash={manifest.hashes.file_sha256} verified={verification?.file_integrity} />
-              </div>
-            ) : (
-              <p className="text-zinc-500 text-sm">No hash data available.</p>
-            )}
+      <div className="flex gap-3">
+        <Button onClick={handleVerify} variant="secondary" disabled={isVerifying}><ShieldCheck size={16} /> {isVerifying ? 'Verifying...' : 'Verify Integrity'}</Button>
+        <Button onClick={handleDownload} variant="secondary"><Download size={16} /> Download .glcf.gz</Button>
+      </div>
 
-            {verification && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div className={`p-4 rounded-xl flex items-center gap-4 ${verification.integrity ? 'bg-teal-500/5 border border-teal-500/10' : 'bg-red-500/5 border border-red-500/10'}`}>
-                  {verification.integrity ? <CheckCircle2 className="w-8 h-8 text-teal-500" /> : <XCircle className="w-8 h-8 text-red-500" />}
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold">Verification</p>
-                    <p className={`text-sm font-bold uppercase ${verification.integrity ? 'text-teal-400' : 'text-red-400'}`}>
-                      {verification.integrity ? 'Passed' : 'FAILED'}
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-4">
-                  <HardDrive className="w-8 h-8 text-zinc-500" />
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold">On-Disk Size</p>
-                    <p className="text-sm font-bold text-zinc-200">{verification.size_bytes?.toLocaleString()} bytes</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* Sizes */}
-          {manifest?.sizes && (
-            <section className="p-6 rounded-2xl bg-[#121214] border border-zinc-800">
-              <h3 className="text-lg font-bold text-white mb-6">Size Breakdown</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-zinc-800/50">
-                  <span className="text-sm text-zinc-500">Raw JSON</span>
-                  <span className="font-mono text-sm text-zinc-200">{manifest.sizes.raw_json_bytes?.toLocaleString()} bytes</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-zinc-800/50">
-                  <span className="text-sm text-zinc-500">Binary (GLCF)</span>
-                  <span className="font-mono text-sm text-zinc-200">{manifest.sizes.binary_bytes?.toLocaleString()} bytes</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-zinc-800/50">
-                  <span className="text-sm text-zinc-500">Compressed (.gz)</span>
-                  <span className="font-mono text-sm text-zinc-200">{manifest.sizes.compressed_bytes?.toLocaleString()} bytes</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-sm text-zinc-500">Compression Ratio</span>
-                  <span className="font-mono text-sm text-teal-400 font-bold">{manifest.sizes.compression_ratio}</span>
-                </div>
-              </div>
-            </section>
-          )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Events</p>
+          <p className="text-2xl font-bold text-white font-mono">{capsule.event_count?.toLocaleString()}</p>
         </div>
-
-        <div className="space-y-8">
-          <section className="p-6 rounded-2xl bg-[#121214] border border-zinc-800">
-            <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6">Technical Specs</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
-                <span className="flex items-center gap-2 text-sm text-zinc-500"><Clock size={14} /> Sealed At</span>
-                <span className="font-mono text-xs text-zinc-300">{manifest?.sealed_at ? new Date(manifest.sealed_at).toLocaleString() : '—'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
-                <span className="flex items-center gap-2 text-sm text-zinc-500"><HardDrive size={14} /> Compressed</span>
-                <span className="font-mono text-sm text-white font-bold">{manifest?.sizes?.compressed_bytes?.toLocaleString() || '—'} B</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
-                <span className="text-sm text-zinc-500">Event Count</span>
-                <span className="font-mono text-sm text-white font-bold">{manifest?.event_count?.toLocaleString() || '—'}</span>
-              </div>
-              {manifest?.time_start && (
-                <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
-                  <span className="text-sm text-zinc-500">Time Range</span>
-                  <span className="font-mono text-[10px] text-zinc-400">
-                    {new Date(manifest.time_start).toLocaleTimeString()} - {new Date(manifest.time_end).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
+        {capsule.sizes && (
+          <>
+            <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Raw Size</p>
+              <p className="text-2xl font-bold text-white font-mono">{formatBytes(capsule.sizes.raw_json_bytes)}</p>
             </div>
-          </section>
-        </div>
+            <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Compressed</p>
+              <p className="text-2xl font-bold text-app-teal-accent font-mono">{formatBytes(capsule.sizes.compressed_bytes)}</p>
+            </div>
+            <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Ratio</p>
+              <p className="text-2xl font-bold text-app-teal-accent font-mono">{capsule.sizes.compression_ratio}</p>
+            </div>
+          </>
+        )}
       </div>
+
+      {capsule.time_start && capsule.time_end && (
+        <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow">
+          <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Clock size={14} className="text-app-teal-accent" /> Time Range</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><p className="text-[10px] text-zinc-600 uppercase">Start</p><p className="text-sm font-mono text-zinc-300 mt-1">{new Date(capsule.time_start).toLocaleString()}</p></div>
+            <div><p className="text-[10px] text-zinc-600 uppercase">End</p><p className="text-sm font-mono text-zinc-300 mt-1">{new Date(capsule.time_end).toLocaleString()}</p></div>
+          </div>
+        </div>
+      )}
+
+      {capsule.hashes && (
+        <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow space-y-4">
+          <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Hash size={14} className="text-app-teal-accent" /> Integrity Hashes</h3>
+          <div className="space-y-3">
+            <div><p className="text-[10px] text-zinc-600 uppercase mb-1">Content SHA-256</p><HashDisplay hash={capsule.hashes.content_sha256} /></div>
+            <div><p className="text-[10px] text-zinc-600 uppercase mb-1">File SHA-256</p><HashDisplay hash={capsule.hashes.file_sha256} /></div>
+          </div>
+        </div>
+      )}
+
+      {verifyResult && (
+        <div className={cn("border rounded-2xl p-6 card-shadow", verifyResult.integrity ? "bg-app-teal-accent/5 border-app-teal-accent/20" : "bg-red-500/5 border-red-500/20")}>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+            <ShieldCheck size={14} className={verifyResult.integrity ? "text-app-teal-accent" : "text-red-400"} />
+            <span className={verifyResult.integrity ? "text-app-teal-accent" : "text-red-400"}>Verification Result</span>
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <div><p className="text-[10px] text-zinc-600 uppercase">File Integrity</p><p className={cn("font-bold mt-1", verifyResult.file_integrity ? "text-app-teal-accent" : "text-red-400")}>{verifyResult.file_integrity ? 'PASS' : 'FAIL'}</p></div>
+            {verifyResult.content_integrity !== undefined && <div><p className="text-[10px] text-zinc-600 uppercase">Content Integrity</p><p className={cn("font-bold mt-1", verifyResult.content_integrity ? "text-app-teal-accent" : "text-red-400")}>{verifyResult.content_integrity ? 'PASS' : 'FAIL'}</p></div>}
+            <div><p className="text-[10px] text-zinc-600 uppercase">Overall</p><p className={cn("font-bold mt-1", verifyResult.integrity ? "text-app-teal-accent" : "text-red-400")}>{verifyResult.integrity ? 'VERIFIED' : 'FAILED'}</p></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 ** 3)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 ** 2)).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}

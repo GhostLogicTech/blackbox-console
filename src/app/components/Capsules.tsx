@@ -1,175 +1,199 @@
 import React, { useState, useEffect } from 'react';
-import { Badge, Button, PanelCard } from './ui/Library';
-import { Search, Layers, Download, Calendar, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Badge, Button } from './ui/Library';
+import { Search, Layers, Download, Calendar, ShieldCheck, Lock, Minimize2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { listCapsules, downloadCapsule, hasTenantKey } from '../../api/client';
 import { toast } from 'sonner';
+import { listCapsules, sealCapsule, verifyCapsule, downloadCapsule } from '../../api/client';
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 ** 3)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 ** 2)).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+interface CapsuleItem {
+  capsule_id: string;
+  event_count: number;
+  sealed_at: string;
+  size_bytes: number;
+  file_sha256: string;
+}
 
 interface CapsulesProps {
   onSelectCapsule: (id: string) => void;
 }
 
 export const Capsules: React.FC<CapsulesProps> = ({ onSelectCapsule }) => {
-  const [capsules, setCapsules] = useState<any[]>([]);
+  const [capsules, setCapsules] = useState<CapsuleItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
+  const [isSealing, setIsSealing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchCapsules = async () => {
-    if (!hasTenantKey()) { setLoading(false); return; }
-    setLoading(true);
     const res = await listCapsules(100, 0);
-    if (res.ok && res.data) {
-      setCapsules(res.data.capsules);
-      setTotal(res.data.total);
-    }
+    if (res.ok && res.data) setCapsules(res.data.capsules);
     setLoading(false);
   };
 
   useEffect(() => { fetchCapsules(); }, []);
 
-  const handleDownload = async (e: React.MouseEvent, capsuleId: string) => {
+  const handleSealBuffer = async () => {
+    setIsSealing(true);
+    const res = await sealCapsule(true);
+    setIsSealing(false);
+    if (res.ok && res.data) {
+      const d = res.data as any;
+      if (d.status === 'sealed') {
+        toast.success(`Sealed capsule ${d.capsule_id?.slice(0, 8)}...`);
+        fetchCapsules();
+      } else {
+        toast.info(d.message || 'Nothing to seal');
+      }
+    } else {
+      toast.error(res.error || 'Seal failed');
+    }
+  };
+
+  const handleVerify = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    toast.info('Downloading...');
-    const blob = await downloadCapsule(capsuleId);
+    toast.info(`Verifying ${id.slice(0, 12)}...`);
+    const res = await verifyCapsule(id);
+    if (res.ok && res.data) {
+      if (res.data.integrity) {
+        toast.success(`${id.slice(0, 12)}... integrity verified`);
+      } else {
+        toast.error(`${id.slice(0, 12)}... INTEGRITY FAILED`);
+      }
+    } else {
+      toast.error(res.error || 'Verification failed');
+    }
+  };
+
+  const handleDownload = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast.info(`Downloading ${id.slice(0, 12)}...`);
+    const blob = await downloadCapsule(id);
     if (blob) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${capsuleId}.glcf.gz`;
+      a.download = `${id}.glcf.gz`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Downloaded');
+      toast.success('Download complete');
     } else {
       toast.error('Download failed');
     }
   };
 
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1048576).toFixed(1)} MB`;
-  };
+  const filtered = capsules.filter(c => c.capsule_id.toLowerCase().includes(searchTerm.toLowerCase()));
+  const totalSize = capsules.reduce((sum, c) => sum + (c.size_bytes || 0), 0);
 
-  const filtered = capsules.filter(c =>
-    c.capsule_id.toLowerCase().includes(search.toLowerCase())
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-app-teal-accent/30 border-t-app-teal-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20 md:pb-0">
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
-          <h1>Stored Capsules</h1>
-          <p className="mt-2">Browse sealed forensic capsules. {total > 0 && `${total} total.`}</p>
+          <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Capsule Vault</h1>
+          <p className="mt-2 text-sm md:text-base">Sealed forensic capsules from <code className="text-app-teal-accent/60 bg-app-teal-accent/5 px-1.5 py-0.5 rounded text-[11px]">GET /api/v1/capsules</code></p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleSealBuffer} disabled={isSealing} size="sm">
+            {isSealing ? (<><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full" /> Sealing...</>) : (<><Lock size={16} /> Seal Evidence Now</>)}
+          </Button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Search IDs..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-app-surface border border-app-border rounded-xl pl-10 pr-4 py-2 text-sm text-app-text-primary focus:outline-none focus:border-app-teal-accent/50 w-full md:w-64"
-            />
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search IDs..." className="bg-app-surface border border-app-border rounded-xl pl-10 pr-4 py-2 text-sm text-app-text-primary focus:outline-none focus:border-app-teal-accent/50 w-full md:w-64" />
           </div>
-          <Button variant="secondary" size="sm" onClick={fetchCapsules}>
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          </Button>
         </div>
       </div>
 
-      {!hasTenantKey() && (
-        <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex gap-3 items-center">
-          <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-          <p className="text-sm text-amber-500/80">No tenant API key. Set one in <span className="font-bold">Settings</span>.</p>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <RefreshCw className="w-8 h-8 text-zinc-600 animate-spin" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20">
-          <Layers className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-          <p className="text-zinc-500">{capsules.length === 0 ? 'No capsules yet. Ingest events and seal to create one.' : 'No capsules match your search.'}</p>
-        </div>
-      ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="hidden lg:block bg-app-surface border border-app-border rounded-2xl overflow-hidden card-shadow">
-            <table className="w-full text-left">
-              <thead className="bg-app-surface-2 border-b border-app-border">
-                <tr>
-                  <th className="px-6 py-4 text-[10px] font-bold text-app-text-secondary uppercase tracking-widest">Capsule ID</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-app-text-secondary uppercase tracking-widest">Sealed At</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-app-text-secondary uppercase tracking-widest text-center">Events</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-app-text-secondary uppercase tracking-widest text-center">Size</th>
-                  <th className="px-6 py-4 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-app-border/50">
-                {filtered.map((capsule) => (
-                  <tr
-                    key={capsule.capsule_id}
-                    onClick={() => onSelectCapsule(capsule.capsule_id)}
-                    className="group hover:bg-white/5 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Layers size={16} className="text-zinc-600 group-hover:text-app-teal-accent" />
-                        <span className="font-mono font-bold text-sm">{capsule.capsule_id.substring(0, 8)}...</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-app-text-secondary">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={12} /> {new Date(capsule.sealed_at).toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center font-mono text-xs">{capsule.event_count}</td>
-                    <td className="px-6 py-4 text-center font-mono text-xs">{formatSize(capsule.size_bytes)}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={(e) => handleDownload(e, capsule.capsule_id)} className="p-2 text-zinc-600 hover:text-app-text-primary">
-                        <Download size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative overflow-hidden rounded-2xl border border-app-teal-accent/20 bg-app-teal-accent/[0.04] p-5 md:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-xl bg-app-teal-accent/10 border border-app-teal-accent/20">
+              <Minimize2 className="w-5 h-5 md:w-6 md:h-6 text-app-teal-accent" />
+            </div>
+            <div>
+              <p className="text-[10px] md:text-[11px] font-bold text-app-teal-accent uppercase tracking-widest flex items-center gap-1.5"><CheckCircle2 size={12} /> Capsule Storage</p>
+            </div>
           </div>
+          <div className="flex items-baseline gap-3 sm:gap-6">
+            <div>
+              <span className="text-3xl md:text-5xl font-bold text-white font-mono tracking-tight">{capsules.length}</span>
+              <span className="text-sm md:text-base text-zinc-500 ml-2">capsules</span>
+            </div>
+            <div className="h-8 w-px bg-zinc-800 hidden sm:block" />
+            <div className="hidden sm:block">
+              <span className="text-2xl md:text-3xl font-bold text-app-teal-accent font-mono">{formatBytes(totalSize)}</span>
+              <span className="text-sm text-zinc-500 ml-2">total</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
-          {/* Mobile Grid */}
-          <div className="lg:hidden grid grid-cols-4 gap-4">
+      <div className="hidden lg:block bg-app-surface border border-app-border rounded-2xl overflow-hidden card-shadow">
+        <table className="w-full text-left">
+          <thead className="bg-app-surface-2 border-b border-app-border">
+            <tr>
+              <th className="px-8 py-6 text-[11px] font-bold text-app-text-secondary uppercase tracking-[0.2em]">Capsule ID</th>
+              <th className="px-8 py-6 text-[11px] font-bold text-app-text-secondary uppercase tracking-[0.2em]">Sealed At</th>
+              <th className="px-8 py-6 text-[11px] font-bold text-app-text-secondary uppercase tracking-[0.2em] text-center">Events</th>
+              <th className="px-8 py-6 text-[11px] font-bold text-app-text-secondary uppercase tracking-[0.2em] text-right">Size</th>
+              <th className="px-8 py-6 text-right"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-app-border/30">
             {filtered.map((capsule) => (
-              <motion.div
-                key={capsule.capsule_id}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onSelectCapsule(capsule.capsule_id)}
-                className="col-span-4 bg-app-surface border border-app-border rounded-2xl p-4 space-y-4"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-app-surface-2 border border-app-border flex items-center justify-center text-app-teal-accent">
-                      <Layers size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-mono text-sm">{capsule.capsule_id.substring(0, 8)}...</h3>
-                      <p className="text-[10px] font-mono mt-1">{new Date(capsule.sealed_at).toLocaleString()}</p>
-                    </div>
+              <tr key={capsule.capsule_id} onClick={() => onSelectCapsule(capsule.capsule_id)} className="group hover:bg-white/[0.03] cursor-pointer transition-colors">
+                <td className="px-8 py-6"><div className="flex items-center gap-4"><Layers size={18} className="text-zinc-600 group-hover:text-app-teal-accent transition-colors" /><span className="font-mono font-bold text-sm text-zinc-300 group-hover:text-white transition-colors">{capsule.capsule_id.slice(0, 12)}...</span></div></td>
+                <td className="px-8 py-6 text-[13px] text-app-text-secondary"><div className="flex items-center gap-2.5"><Calendar size={14} className="opacity-50" /> {new Date(capsule.sealed_at).toLocaleString()}</div></td>
+                <td className="px-8 py-6 text-center font-mono text-[13px] text-zinc-400">{capsule.event_count.toLocaleString()}</td>
+                <td className="px-8 py-6 text-right font-mono text-[13px] text-zinc-300">{formatBytes(capsule.size_bytes)}</td>
+                <td className="px-8 py-6 text-right">
+                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => handleVerify(capsule.capsule_id, e)} className="p-2.5 text-zinc-500 hover:text-app-teal-accent hover:bg-app-teal-accent/10 rounded-lg transition-all" title="Verify integrity"><ShieldCheck size={16} /></button>
+                    <button onClick={(e) => handleDownload(capsule.capsule_id, e)} className="p-2.5 text-zinc-500 hover:text-app-teal-accent hover:bg-app-teal-accent/10 rounded-lg transition-all" title="Download"><Download size={16} /></button>
                   </div>
-                  <Badge variant="success">{capsule.event_count} events</Badge>
-                </div>
-                <div className="flex justify-between items-center pt-4 border-t border-app-border/50">
-                  <span className="text-[10px] font-mono text-zinc-500">{formatSize(capsule.size_bytes)}</span>
-                  <Button variant="secondary" size="sm">View Detail</Button>
-                </div>
-              </motion.div>
+                </td>
+              </tr>
             ))}
-          </div>
-        </>
-      )}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <div className="py-12 text-center text-zinc-600">No capsules found</div>}
+      </div>
+
+      <div className="lg:hidden space-y-4">
+        {filtered.map((capsule) => (
+          <motion.div key={capsule.capsule_id} whileTap={{ scale: 0.98 }} onClick={() => onSelectCapsule(capsule.capsule_id)} className="bg-app-surface border border-app-border rounded-2xl p-6 space-y-5">
+            <div className="flex justify-between items-start">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-app-surface-2 border border-app-border flex items-center justify-center text-app-teal-accent shadow-inner"><Layers size={24} /></div>
+                <div>
+                  <h3 className="font-mono text-base font-bold text-white">{capsule.capsule_id.slice(0, 12)}...</h3>
+                  <p className="text-[11px] font-mono mt-1 text-zinc-500">{new Date(capsule.sealed_at).toLocaleString()}</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-zinc-500">{capsule.event_count.toLocaleString()} events</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 py-3 border-t border-app-border/30">
+              <div><p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Size</p><p className="text-sm font-mono text-zinc-300 mt-0.5">{formatBytes(capsule.size_bytes)}</p></div>
+              <div><p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Events</p><p className="text-sm font-mono text-zinc-300 mt-0.5">{capsule.event_count.toLocaleString()}</p></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={(e) => handleVerify(capsule.capsule_id, e)} className="p-2 text-zinc-500 hover:text-app-teal-accent rounded-lg transition-all"><ShieldCheck size={16} /></button>
+              <button onClick={(e) => handleDownload(capsule.capsule_id, e)} className="p-2 text-zinc-500 hover:text-app-teal-accent rounded-lg transition-all"><Download size={16} /></button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 };

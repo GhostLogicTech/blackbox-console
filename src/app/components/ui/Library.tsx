@@ -40,7 +40,7 @@ export const Button: React.FC<{
   disabled?: boolean;
 }> = ({ variant = 'primary', size = 'md', children, onClick, className, disabled }) => {
   const variants = {
-    primary: 'bg-app-teal-accent text-black hover:bg-app-teal-accent/90 shadow-[0_0_20px_rgba(45,212,191,0.2)]',
+    primary: 'bg-app-teal-accent text-black hover:bg-app-teal-accent/90 shadow-[0_0_20px_rgba(52,211,153,0.2)]',
     secondary: 'bg-app-surface-2 text-app-text-primary border border-app-border hover:bg-zinc-800',
     danger: 'bg-app-red-alert/10 text-app-red-alert border border-app-red-alert/20 hover:bg-app-red-alert/20',
   };
@@ -51,7 +51,7 @@ export const Button: React.FC<{
   };
 
   return (
-    <button 
+    <button
       onClick={onClick}
       disabled={disabled}
       className={cn(
@@ -73,11 +73,11 @@ export const PanelCard: React.FC<{
   children: React.ReactNode;
   className?: string;
 }> = ({ title, icon: Icon, children, className }) => (
-  <div className={cn("bg-app-surface border border-app-border rounded-2xl p-6 card-shadow", className)}>
+  <div className={cn("bg-app-surface border border-app-border rounded-2xl md:rounded-[1.5rem] p-5 md:p-8 card-shadow", className)}>
     {title && (
-      <div className="flex items-center gap-2 mb-6 border-b border-app-border pb-4">
-        {Icon && <Icon className="w-5 h-5 text-app-teal-accent" />}
-        <h3 className="text-lg font-bold text-app-text-primary">{title}</h3>
+      <div className="flex items-center gap-3 mb-5 md:mb-8 border-b border-app-border pb-4 md:pb-6">
+        {Icon && <Icon className="w-5 h-5 md:w-6 md:h-6 text-app-teal-accent" />}
+        <h3 className="text-lg md:text-xl font-bold text-app-text-primary tracking-tight">{title}</h3>
       </div>
     )}
     {children}
@@ -90,21 +90,21 @@ export const StatsCard: React.FC<{
   icon: React.ElementType;
   trend?: { value: string; positive: boolean };
 }> = ({ label, value, icon: Icon, trend }) => (
-  <div className="bg-app-surface border border-app-border rounded-2xl p-6 card-shadow hover-glow">
-    <div className="flex justify-between items-start mb-4">
-      <div className="p-2.5 rounded-xl bg-app-surface-2 border border-app-border text-app-text-secondary">
-        <Icon size={20} />
+  <div className="bg-app-surface border border-app-border rounded-2xl md:rounded-[1.5rem] p-4 md:p-8 card-shadow hover-glow transition-all duration-300">
+    <div className="flex justify-between items-start mb-3 md:mb-6">
+      <div className="p-2 md:p-3 rounded-xl md:rounded-2xl bg-app-surface-2 border border-app-border text-app-text-secondary shadow-inner">
+        <Icon size={20} className="md:w-6 md:h-6" />
       </div>
       {trend && (
         <span className={cn(
-          "text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-800/50",
+          "text-[11px] font-bold px-2.5 py-1 rounded-lg bg-zinc-800/50 border border-zinc-700/50",
           trend.positive ? "text-app-teal-accent" : "text-app-red-alert"
         )}>
           {trend.value}
         </span>
       )}
     </div>
-    <p className="text-[10px] uppercase tracking-widest text-app-text-secondary font-bold mb-1">{label}</p>
-    <p className="text-2xl font-bold text-app-text-primary">{value}</p>
+    <p className="text-[10px] md:text-[11px] uppercase tracking-[0.15em] md:tracking-[0.2em] text-app-text-secondary font-bold mb-1 md:mb-2">{label}</p>
+    <p className="text-xl md:text-3xl font-bold text-app-text-primary tracking-tight">{value}</p>
   </div>
 );
