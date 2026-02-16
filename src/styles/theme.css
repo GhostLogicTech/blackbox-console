@@ -9,13 +9,8 @@
   --color-app-teal-accent: #34d399;
   --color-app-red-alert: #ef4444;
 
-  /* Spacing Scale */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
-  --spacing-2xl: 32px;
+  /* Container / max-width breakpoints */
+  --container-7xl: 80rem;
 
   /* Typography Sizes */
   --font-size-h1: 36px;
