@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Terminal as TerminalIcon, Key, Download, ShieldCheck, Cpu, Activity,
+  Terminal as TerminalIcon, Key, ShieldCheck,
   ChevronRight, Copy, Check, Server, Wifi, ArrowRight,
-  ExternalLink, Monitor, HardDrive, Clock, Network, Globe, Layers
+  Monitor, Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button, cn } from './ui/Library';
@@ -15,29 +15,32 @@ interface SetupProtocolProps {
 
 type Platform = 'windows' | 'linux' | 'macos';
 
-const platformSteps: Record<Platform, { label: string; steps: { desc: string; cmd: string }[] }> = {
+const installSteps: Record<Platform, { label: string; icon: typeof Monitor; steps: { desc: string; cmd: string }[] }> = {
   windows: {
     label: 'Windows',
+    icon: Monitor,
     steps: [
-      { desc: 'Install Python (if not installed)', cmd: 'winget install Python.Python.3.12' },
-      { desc: 'Restart your terminal, then install the agent', cmd: 'pip install ghostlogic-agent' },
-      { desc: 'Run the agent', cmd: 'ghostlogic-agent' },
+      { desc: 'Clone the agent repo', cmd: 'git clone https://github.com/GhostLogicAI/blackbox-agent.git' },
+      { desc: 'Enter the directory', cmd: 'cd blackbox-agent' },
+      { desc: 'Run the installer (PowerShell as Admin)', cmd: '.\\install\\windows\\install.ps1' },
     ],
   },
   macos: {
     label: 'macOS',
+    icon: Globe,
     steps: [
-      { desc: 'Install Python via Homebrew', cmd: 'brew install python' },
-      { desc: 'Install the agent', cmd: 'pip3 install ghostlogic-agent' },
-      { desc: 'Run the agent', cmd: 'ghostlogic-agent' },
+      { desc: 'Clone the agent repo', cmd: 'git clone https://github.com/GhostLogicAI/blackbox-agent.git' },
+      { desc: 'Enter the directory', cmd: 'cd blackbox-agent' },
+      { desc: 'Run the installer', cmd: 'bash install/mac/install.sh' },
     ],
   },
   linux: {
     label: 'Linux',
+    icon: Server,
     steps: [
-      { desc: 'Make sure Python 3 and pip are installed', cmd: 'sudo apt install python3 python3-pip -y' },
-      { desc: 'Install the agent', cmd: 'pip3 install ghostlogic-agent' },
-      { desc: 'Run the agent', cmd: 'ghostlogic-agent' },
+      { desc: 'Clone the agent repo', cmd: 'git clone https://github.com/GhostLogicAI/blackbox-agent.git' },
+      { desc: 'Enter the directory', cmd: 'cd blackbox-agent' },
+      { desc: 'Run the installer', cmd: 'sudo bash install/linux/install.sh' },
     ],
   },
 };
@@ -49,7 +52,6 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
   const [verifyError, setVerifyError] = useState('');
   const [tenantInfo, setTenantInfo] = useState<{ tenant_id: string; name: string } | null>(null);
   const [endpointData, setEndpointData] = useState<any[]>([]);
-  const [isPolling, setIsPolling] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
   const [platform, setPlatform] = useState<Platform>(() => {
     const ua = navigator.userAgent.toLowerCase();
@@ -59,7 +61,6 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
   });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Clean up polling on unmount
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -78,7 +79,6 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
     setIsVerifying(true);
     setVerifyError('');
 
-    // Determine if this is an admin or tenant key
     if (apiKey.startsWith('glk_admin_')) {
       setAdminKey(apiKey.trim());
     }
@@ -89,7 +89,6 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
       setTenantInfo({ tenant_id: res.data.tenant_id, name: res.data.name });
       toast.success(`Connected as ${res.data.name}`);
       setStep(3);
-      // Start polling for endpoints
       startEndpointPolling();
     } else {
       setVerifyError(res.error || 'Invalid key');
@@ -99,7 +98,6 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
   };
 
   const startEndpointPolling = () => {
-    setIsPolling(true);
     const poll = async () => {
       const res = await getEndpoints();
       if (res.ok && res.data && res.data.endpoints.length > 0) {
@@ -115,15 +113,18 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
     onComplete();
   };
 
+  const stepLabels = ['Install', 'Connect', 'Verify'];
+  const currentPlatform = installSteps[platform];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="fixed inset-0 z-[100] bg-app-bg flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] bg-app-bg flex items-center justify-center p-4 overflow-y-auto"
     >
-      <div className="w-full max-w-2xl">
-        {/* Progress */}
+      <div className="w-full max-w-2xl my-auto">
+        {/* Progress bar */}
         <div className="flex items-center gap-4 mb-10">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-3 flex-1">
@@ -139,7 +140,7 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                 "text-xs font-bold uppercase tracking-widest hidden sm:inline",
                 step >= s ? "text-app-teal-accent" : "text-zinc-600"
               )}>
-                {s === 1 ? 'Install' : s === 2 ? 'Connect' : 'Verify'}
+                {stepLabels[s - 1]}
               </span>
               {s < 3 && <div className={cn("flex-1 h-px", step > s ? "bg-app-teal-accent" : "bg-app-border")} />}
             </div>
@@ -147,18 +148,18 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* Step 1: Install Agent */}
+          {/* ── Step 1: Install the Agent ── */}
           {step === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Install the Agent</h1>
-                <p className="mt-3 text-zinc-500 text-lg">Follow the steps below for your OS. The agent prints your API key on first run.</p>
+                <p className="mt-3 text-zinc-500 text-lg">Run these commands on the machine you want to monitor. The agent will print your API key when it starts.</p>
               </div>
 
-              {/* Platform selector */}
+              {/* Platform tabs */}
               <div className="flex gap-2">
-                {(Object.keys(platformSteps) as Platform[]).map((p) => {
-                  const Icon = p === 'windows' ? Monitor : p === 'linux' ? Server : Globe;
+                {(Object.keys(installSteps) as Platform[]).map((p) => {
+                  const Icon = installSteps[p].icon;
                   return (
                     <button
                       key={p}
@@ -171,16 +172,20 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                       )}
                     >
                       <Icon size={16} />
-                      {platformSteps[p].label}
+                      {installSteps[p].label}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Step-by-step commands */}
+              {/* Commands */}
               <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
-                {platformSteps[platform].steps.map((s, i) => (
-                  <div key={i} className="space-y-2">
+                <div className="flex items-center gap-3 mb-1">
+                  <TerminalIcon size={16} className="text-app-teal-accent" />
+                  <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Open a terminal and run</span>
+                </div>
+                {currentPlatform.steps.map((s, i) => (
+                  <div key={`${platform}-${i}`} className="space-y-2">
                     <div className="flex items-center gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-app-teal-accent/15 flex items-center justify-center text-[10px] font-bold text-app-teal-accent shrink-0">
                         {i + 1}
@@ -195,7 +200,9 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                     </div>
                   </div>
                 ))}
-                <p className="text-xs text-zinc-600 ml-7 pt-1">Copy your API key from the terminal output after the agent starts.</p>
+                <p className="text-xs text-zinc-600 ml-7 pt-1">
+                  The installer sets everything up. When it finishes, the agent prints your <code className="text-app-teal-accent/60">glk_</code> API key — copy it for the next step.
+                </p>
               </div>
 
               <div className="flex justify-end">
@@ -206,12 +213,12 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
             </motion.div>
           )}
 
-          {/* Step 2: Paste Key */}
+          {/* ── Step 2: Paste key from terminal ── */}
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Connect Your Key</h1>
-                <p className="mt-3 text-zinc-500 text-lg">Paste the API key that the agent printed when it first ran.</p>
+                <p className="mt-3 text-zinc-500 text-lg">Paste the API key the agent printed in your terminal.</p>
               </div>
 
               <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
@@ -226,12 +233,13 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                   onKeyDown={(e) => e.key === 'Enter' && handleVerifyKey()}
                   placeholder="glk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                   className="w-full bg-black border border-app-border rounded-xl px-4 py-3 font-mono text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-app-teal-accent/50"
+                  autoFocus
                 />
                 {verifyError && (
                   <p className="text-sm text-red-400">{verifyError}</p>
                 )}
                 <p className="text-xs text-zinc-600">
-                  This calls <code className="text-app-teal-accent/50">GET /api/v1/me</code> to verify your key and retrieve your tenant identity.
+                  This connects your browser to the data your agent is collecting.
                 </p>
               </div>
 
@@ -244,7 +252,7 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
             </motion.div>
           )}
 
-          {/* Step 3: Verify Connection */}
+          {/* ── Step 3: Verified / waiting for telemetry ── */}
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
               <div>
@@ -301,7 +309,7 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                     <Wifi size={18} className="text-zinc-500 animate-pulse" />
                     <span className="text-sm text-zinc-500">Waiting for agent telemetry...</span>
                   </div>
-                  <p className="text-xs text-zinc-600">Run the agent on a machine and it will appear here automatically.</p>
+                  <p className="text-xs text-zinc-600">Once the agent starts sending data, it will appear here.</p>
                 </div>
               )}
 
