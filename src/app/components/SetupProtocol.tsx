@@ -119,30 +119,30 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                 <p className="mt-3 text-zinc-500 text-lg">Run the GhostLogic agent on any machine you want to monitor.</p>
               </div>
 
-              <div className="bg-app-surface border border-app-border rounded-2xl p-6 space-y-4">
+              <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <TerminalIcon size={18} className="text-app-teal-accent" />
                   <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Quick Install</span>
                 </div>
-                <div className="bg-black rounded-xl p-4 font-mono text-sm text-app-teal-accent flex items-center justify-between">
-                  <code>pip install ghostlogic-agent && ghostlogic-agent</code>
-                  <button onClick={handleCopyInstall} className="p-2 text-zinc-500 hover:text-white transition-colors">
+                <div className="bg-black rounded-xl p-3 sm:p-4 font-mono text-xs sm:text-sm text-app-teal-accent flex items-center justify-between gap-2">
+                  <code className="overflow-x-auto whitespace-nowrap scrollbar-hide">pip install ghostlogic-agent && ghostlogic-agent</code>
+                  <button onClick={handleCopyInstall} className="shrink-0 p-2 text-zinc-500 hover:text-white transition-colors">
                     {copiedInstall ? <Check size={16} className="text-app-teal-accent" /> : <Copy size={16} />}
                   </button>
                 </div>
                 <p className="text-xs text-zinc-600">The agent auto-registers with api.ghostlogic.tech and prints your API key on first run.</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-app-surface-2 border border-app-border rounded-xl p-4 text-center">
+              <div className="flex flex-wrap gap-3 sm:gap-4">
+                <div className="flex-1 min-w-[5.5rem] bg-app-surface-2 border border-app-border rounded-xl p-3 sm:p-4 text-center">
                   <Monitor size={20} className="mx-auto text-zinc-500 mb-2" />
                   <p className="text-[10px] font-bold text-zinc-500 uppercase">Windows</p>
                 </div>
-                <div className="bg-app-surface-2 border border-app-border rounded-xl p-4 text-center">
+                <div className="flex-1 min-w-[5.5rem] bg-app-surface-2 border border-app-border rounded-xl p-3 sm:p-4 text-center">
                   <Server size={20} className="mx-auto text-zinc-500 mb-2" />
                   <p className="text-[10px] font-bold text-zinc-500 uppercase">Linux</p>
                 </div>
-                <div className="bg-app-surface-2 border border-app-border rounded-xl p-4 text-center">
+                <div className="flex-1 min-w-[5.5rem] bg-app-surface-2 border border-app-border rounded-xl p-3 sm:p-4 text-center">
                   <Globe size={20} className="mx-auto text-zinc-500 mb-2" />
                   <p className="text-[10px] font-bold text-zinc-500 uppercase">macOS</p>
                 </div>
@@ -164,7 +164,7 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                 <p className="mt-3 text-zinc-500 text-lg">Paste the API key that the agent printed when it first ran.</p>
               </div>
 
-              <div className="bg-app-surface border border-app-border rounded-2xl p-6 space-y-4">
+              <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <Key size={18} className="text-app-teal-accent" />
                   <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">API Key</span>
@@ -205,38 +205,38 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
               </div>
 
               {/* Tenant info */}
-              <div className="bg-app-surface border border-app-teal-accent/20 rounded-2xl p-6 space-y-3">
+              <div className="bg-app-surface border border-app-teal-accent/20 rounded-2xl p-4 sm:p-6 space-y-3">
                 <div className="flex items-center gap-3 mb-2">
                   <ShieldCheck size={18} className="text-app-teal-accent" />
                   <span className="text-[11px] font-bold text-app-teal-accent uppercase tracking-widest">Verified</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                   <div>
                     <p className="text-[10px] text-zinc-600 uppercase">Tenant</p>
                     <p className="text-white font-mono mt-1">{tenantInfo?.name}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-zinc-600 uppercase">Tenant ID</p>
-                    <p className="text-zinc-400 font-mono mt-1 text-xs">{tenantInfo?.tenant_id}</p>
+                    <p className="text-zinc-400 font-mono mt-1 text-xs break-all">{tenantInfo?.tenant_id}</p>
                   </div>
                 </div>
               </div>
 
               {/* Live endpoints */}
               {endpointData.length > 0 ? (
-                <div className="bg-app-surface border border-app-border rounded-2xl p-6 space-y-4">
+                <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-app-teal-accent animate-pulse" />
                     <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Live Endpoints Detected</span>
                   </div>
                   {endpointData.map((ep: any) => (
-                    <div key={ep.endpoint_name} className="p-4 bg-app-bg border border-app-border rounded-xl">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-white">{ep.endpoint_name}</span>
-                        <span className="text-[10px] font-mono text-zinc-600">{ep.event_count?.toLocaleString()} events</span>
+                    <div key={ep.endpoint_name} className="p-3 sm:p-4 bg-app-bg border border-app-border rounded-xl">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-white truncate">{ep.endpoint_name}</span>
+                        <span className="text-[10px] font-mono text-zinc-600 shrink-0">{ep.event_count?.toLocaleString()} events</span>
                       </div>
                       {ep.latest?.system && (
-                        <div className="flex gap-4 mt-2 text-xs font-mono text-zinc-500">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs font-mono text-zinc-500">
                           <span>CPU: {ep.latest.system.cpu_percent}%</span>
                           <span>RAM: {ep.latest.system.ram_percent}%</span>
                           <span>{ep.latest.system.os} {ep.latest.system.machine}</span>
@@ -246,7 +246,7 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                   ))}
                 </div>
               ) : (
-                <div className="bg-app-surface border border-app-border rounded-2xl p-6 text-center">
+                <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 text-center">
                   <div className="flex items-center justify-center gap-3 mb-3">
                     <Wifi size={18} className="text-zinc-500 animate-pulse" />
                     <span className="text-sm text-zinc-500">Waiting for agent telemetry...</span>
