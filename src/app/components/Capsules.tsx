@@ -3,12 +3,19 @@ import { Badge, Button } from './ui/Library';
 import { Search, Layers, Download, Calendar, ShieldCheck, Lock, Minimize2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { listCapsules, sealCapsule, verifyCapsule, downloadCapsule } from '../../api/client';
+import { listCapsules, sealCapsule, verifyCapsule, downloadCapsule, getStatus } from '../../api/client';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 ** 3)).toFixed(1)} GB`;
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 ** 2)).toFixed(1)} MB`;
   return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function formatStorageMB(mb: number): string {
+  if (mb >= 1024 * 1024) return `${(mb / (1024 * 1024)).toFixed(1)} TB`;
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${mb.toFixed(1)} MB`;
 }
 
 interface CapsuleItem {
@@ -23,19 +30,39 @@ interface CapsulesProps {
   onSelectCapsule: (id: string) => void;
 }
 
+const PAGE_SIZE = 50;
+
 export const Capsules: React.FC<CapsulesProps> = ({ onSelectCapsule }) => {
   const [capsules, setCapsules] = useState<CapsuleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSealing, setIsSealing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalStorageMB, setTotalStorageMB] = useState(0);
+  const [page, setPage] = useState(0);
 
-  const fetchCapsules = async () => {
-    const res = await listCapsules(100, 0);
-    if (res.ok && res.data) setCapsules(res.data.capsules);
+  const fetchCapsules = async (pageNum: number = page) => {
+    const [capsRes, statusRes] = await Promise.all([
+      listCapsules(PAGE_SIZE, pageNum * PAGE_SIZE),
+      pageNum === 0 ? getStatus() : Promise.resolve(null),
+    ]);
+    if (capsRes.ok && capsRes.data) {
+      setCapsules(capsRes.data.capsules);
+      setTotalCount(capsRes.data.total);
+    }
+    if (statusRes && 'ok' in statusRes && statusRes.ok && statusRes.data) {
+      setTotalStorageMB(parseFloat(statusRes.data.total_storage_mb || '0'));
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetchCapsules(); }, []);
+  useEffect(() => { fetchCapsules(0); }, []);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    setLoading(true);
+    fetchCapsules(newPage);
+  };
 
   const handleSealBuffer = async () => {
     setIsSealing(true);
@@ -87,7 +114,7 @@ export const Capsules: React.FC<CapsulesProps> = ({ onSelectCapsule }) => {
   };
 
   const filtered = capsules.filter(c => c.capsule_id.toLowerCase().includes(searchTerm.toLowerCase()));
-  const totalSize = capsules.reduce((sum, c) => sum + (c.size_bytes || 0), 0);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   if (loading) {
     return (
@@ -127,12 +154,12 @@ export const Capsules: React.FC<CapsulesProps> = ({ onSelectCapsule }) => {
           </div>
           <div className="flex items-baseline gap-3 sm:gap-6">
             <div>
-              <span className="text-3xl md:text-5xl font-bold text-white font-mono tracking-tight">{capsules.length}</span>
+              <span className="text-3xl md:text-5xl font-bold text-white font-mono tracking-tight">{totalCount.toLocaleString()}</span>
               <span className="text-sm md:text-base text-zinc-500 ml-2">capsules</span>
             </div>
             <div className="h-8 w-px bg-zinc-800 hidden sm:block" />
             <div className="hidden sm:block">
-              <span className="text-2xl md:text-3xl font-bold text-app-teal-accent font-mono">{formatBytes(totalSize)}</span>
+              <span className="text-2xl md:text-3xl font-bold text-app-teal-accent font-mono">{formatStorageMB(totalStorageMB)}</span>
               <span className="text-sm text-zinc-500 ml-2">total</span>
             </div>
           </div>
@@ -194,6 +221,33 @@ export const Capsules: React.FC<CapsulesProps> = ({ onSelectCapsule }) => {
           </motion.div>
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-xs text-zinc-500 font-mono">
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount.toLocaleString()}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 0}
+              className="p-2 rounded-lg bg-app-surface border border-app-border text-zinc-400 hover:text-white hover:border-zinc-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-xs font-mono text-zinc-500 px-2">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= totalPages - 1}
+              className="p-2 rounded-lg bg-app-surface border border-app-border text-zinc-400 hover:text-white hover:border-zinc-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
