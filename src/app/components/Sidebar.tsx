@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Monitor,
   Database,
+  Code2,
   ChevronLeft,
   ChevronRight,
   Terminal
@@ -21,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, colla
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'endpoints', label: 'Endpoints', icon: Monitor },
+    { id: 'claude', label: 'Claude', icon: Code2 },
     { id: 'capsules', label: 'Vault', icon: Database },
   ];
 

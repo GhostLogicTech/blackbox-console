@@ -4,6 +4,7 @@ import { MobileNav } from './components/MobileNav';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { Endpoints } from './components/Endpoints';
+import { Claude } from './components/Claude';
 import { Ingest } from './components/Ingest';
 import { Seal } from './components/Seal';
 import { Capsules } from './components/Capsules';
@@ -69,6 +70,7 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
       case 'endpoints': return <Endpoints onNavigate={setActiveTab} />;
+      case 'claude': return <Claude />;
       case 'ingest': return <Ingest />;
       case 'seal': return <Seal />;
       case 'capsules': return <Capsules onSelectCapsule={handleSelectCapsule} />;
