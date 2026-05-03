@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Monitor, Database } from 'lucide-react';
+import { LayoutDashboard, Monitor, Database, Code2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from './ui/Library';
 
@@ -12,6 +12,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab })
   const items = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'endpoints', label: 'Endpoints', icon: Monitor },
+    { id: 'claude', label: 'Claude', icon: Code2 },
     { id: 'capsules', label: 'Vault', icon: Database },
   ];
 
