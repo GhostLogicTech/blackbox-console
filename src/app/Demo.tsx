@@ -155,9 +155,15 @@ const EndpointList: React.FC<{ endpoints: DemoEndpoint[] }> = ({ endpoints }) =>
         </tr>
       </thead>
       <tbody>
-        {endpoints.map((e) => (
-          <tr key={e.endpoint_id} style={{ borderBottom: '1px solid #1f2937' }}>
-            <td style={{ padding: '6px 8px' }}>{e.endpoint_name}</td>
+        {endpoints.map((e, idx) => {
+          // Server may omit endpoint_id; use a stable fallback for the
+          // React key + a "—" display. Don't crash on .slice of undefined.
+          const idVal: string = e.endpoint_id ?? e.agent_id ?? '';
+          const idDisplay = idVal ? `${idVal.slice(0, 12)}…` : '—';
+          const reactKey = idVal || e.endpoint_name || `endpoint-${idx}`;
+          return (
+          <tr key={reactKey} style={{ borderBottom: '1px solid #1f2937' }}>
+            <td style={{ padding: '6px 8px' }}>{e.endpoint_name ?? '—'}</td>
             <td
               style={{
                 padding: '6px 8px',
@@ -165,14 +171,17 @@ const EndpointList: React.FC<{ endpoints: DemoEndpoint[] }> = ({ endpoints }) =>
                 color: '#9ca3af',
               }}
             >
-              {e.endpoint_id.slice(0, 12)}…
+              {idDisplay}
             </td>
-            <td style={{ padding: '6px 8px', color: '#9ca3af' }}>{fmtRelative(e.last_seen)}</td>
+            <td style={{ padding: '6px 8px', color: '#9ca3af' }}>
+              {e.last_seen ? fmtRelative(e.last_seen) : '—'}
+            </td>
             <td style={{ padding: '6px 8px', textAlign: 'right' }}>
               {e.events_total ?? '—'}
             </td>
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </table>
   );

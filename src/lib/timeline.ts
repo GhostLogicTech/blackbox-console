@@ -69,8 +69,10 @@ export function eventToEntry(ev: DemoEvent): TimelineEntry {
     fieldFromEvent(ev, 'actor'),
     fieldFromEvent(ev, 'actor_name'),
     fieldFromEvent(ev, 'user'),
+    fieldFromEvent(ev, 'agent_id'),
     fieldFromEvent(ev, 'source_id'),
     fieldFromEvent(ev, 'endpoint_name'),
+    fieldFromEvent(ev, 'endpoint'),
   ]) ?? 'unknown';
 
   const tool = pickString([
@@ -101,6 +103,7 @@ export function eventToEntry(ev: DemoEvent): TimelineEntry {
 
   const endpoint_name = pickString([
     fieldFromEvent(ev, 'endpoint_name'),
+    fieldFromEvent(ev, 'endpoint'),
     fieldFromEvent(ev, 'source_id'),
   ]) ?? '(no endpoint)';
 
