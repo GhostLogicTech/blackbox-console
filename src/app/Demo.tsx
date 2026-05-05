@@ -382,12 +382,20 @@ const Demo: React.FC = () => {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        // Hard-cover the viewport so any production fixed-position
+        // overlay that somehow leaked into the DOM cannot paint above
+        // Demo. The amber DemoBanner inside has its own zIndex: 100,
+        // so it stays above this baseline.
+        position: 'fixed',
+        inset: 0,
+        zIndex: 0,
+        overflowY: 'auto',
         background: '#030712',
         color: '#e5e7eb',
         fontFamily:
           'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
       }}
+      data-demo-shell
     >
       <DemoBanner tenant={status?.tenant} />
       <StatusStrip status={status} error={error} />

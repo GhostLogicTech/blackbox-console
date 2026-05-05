@@ -5,3 +5,28 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+/* =============================================================================
+ * /demo hard isolation — see main.tsx.
+ * main.tsx adds .demo-mode to <html> and <body> synchronously, before the
+ * dynamic chunk for Demo arrives. These rules ensure:
+ *   - First paint is the same dark background Demo will use, so there's
+ *     no white-flash before Demo mounts.
+ *   - Anything from a hypothetical production-shell leak (a portal that
+ *     somehow attached to body, a fixed-positioned overlay) is hidden by
+ *     default; Demo's own subtree is the only thing visible inside #root.
+ * ============================================================================= */
+html.demo-mode,
+html.demo-mode body,
+body.demo-mode {
+  background: #030712;
+  color: #e5e7eb;
+}
+
+/* Failsafe: when in demo mode, hide any direct child of <body> other than
+ * the React root. (A misbehaving sonner Toaster portal, an injected
+ * loading spinner, etc., would land directly on <body>.) The Demo shell
+ * itself lives inside #root and is unaffected. */
+body.demo-mode > *:not(#root) {
+  display: none !important;
+}
