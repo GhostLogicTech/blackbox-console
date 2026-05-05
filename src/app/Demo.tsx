@@ -421,22 +421,6 @@ const Demo: React.FC = () => {
         <p style={{ textAlign: 'center', color: '#6b7280', fontSize: 12, padding: 16 }}>
           Read-only · refreshes every {REFRESH_MS / 1000}s · ghostlogic-demo tenant only
         </p>
-        <p
-          style={{
-            textAlign: 'center',
-            color: '#6b7280',
-            fontSize: 12,
-            paddingBottom: 24,
-          }}
-        >
-          Trouble installing? Email{' '}
-          <a
-            href="mailto:security@ghostlogic.tech?subject=ghostlogic-agent-watchdog%20install%20help"
-            style={{ color: '#9ca3af', textDecoration: 'underline' }}
-          >
-            security@ghostlogic.tech
-          </a>
-        </p>
       </div>
     </div>
   );

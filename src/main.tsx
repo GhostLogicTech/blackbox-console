@@ -8,7 +8,7 @@ import './styles/index.css';
 // Build version is logged at startup so an operator inspecting the
 // console can confirm which build is loaded. Bumped on each deploy
 // that needs to invalidate cached chunks.
-const BUILD_VERSION = '2026-05-05.t4-support-email';
+const BUILD_VERSION = '2026-05-05.t5-pull-email';
 // Path-based dispatch with two guarantees:
 //   1. Production App and the entire ./app/App.tsx import graph (Sidebar,
 //      Dashboard, SetupProtocol, motion/react, etc.) NEVER load on /demo.
