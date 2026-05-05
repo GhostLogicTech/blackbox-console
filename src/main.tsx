@@ -5,6 +5,10 @@ import './styles/index.css';
 // =============================================================================
 // /demo vs production shell — hard isolation
 // =============================================================================
+// Build version is logged at startup so an operator inspecting the
+// console can confirm which build is loaded. Bumped on each deploy
+// that needs to invalidate cached chunks.
+const BUILD_VERSION = '2026-05-05.t1';
 // Path-based dispatch with two guarantees:
 //   1. Production App and the entire ./app/App.tsx import graph (Sidebar,
 //      Dashboard, SetupProtocol, motion/react, etc.) NEVER load on /demo.
@@ -23,6 +27,9 @@ const isDemoRoute = (() => {
   const p = window.location.pathname;
   return p === '/demo' || p.startsWith('/demo/');
 })();
+
+// eslint-disable-next-line no-console
+console.log(`[blackbox-console] build ${BUILD_VERSION} · path=${window.location.pathname} · demo=${isDemoRoute}`);
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 
