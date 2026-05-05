@@ -6,13 +6,13 @@ import { cn } from './ui/Library';
 
 /**
  * Modal that walks an operator through attaching a new device:
- *   1. pip install ghostlogic-agent-watchdog
- *   2. logicd install (interactive — prompts for API key + writes config)
- *   3. logicd run --config <path>
+ *   1. pip install --upgrade ghostlogic-agent-watchdog   (Python ≥ 3.11)
+ *   2. python -m logicd enroll --token <YOUR_TOKEN>      (writes config,
+ *                                                         prints API key)
  *
- * The token-based enrollment flow (logicd enroll --token) lands once
- * the new auth.db backend is deployed. For now: interactive install
- * with an operator-supplied API key.
+ * Token-based enrollment is the production path. Tokens come from the
+ * dashboard's invite flow. For a no-token try-out: use `demo-dog`
+ * against the public ghostlogic-demo tenant — see /demo.
  */
 
 interface AttachAgentWatchdogProps {
@@ -26,18 +26,18 @@ const REPO_URL = 'https://github.com/adam-scott-thomas/ghostlogic-agent-watchdog
 const STEPS = [
   {
     label: '1. Install',
-    cmd: 'pip install ghostlogic-agent-watchdog',
-    note: 'Python ≥3.11. Works on Windows, macOS, Linux.',
+    cmd: 'pip install --upgrade ghostlogic-agent-watchdog',
+    note: 'Python ≥ 3.11. Works on Windows, macOS, Linux.',
   },
   {
-    label: '2. Configure',
-    cmd: 'python -m logicd install',
-    note: 'Interactive — prompts for your API key, writes a locked config under the platform-native data dir, prints service-registration steps.',
+    label: '2. Enroll',
+    cmd: 'python -m logicd enroll --token <YOUR_TOKEN>',
+    note: 'Writes a locked config under the platform-native data dir, fetches a scoped agent key, prints the gl_agent_ API key + the run command. Use the token from your invite email.',
   },
   {
     label: '3. Run',
     cmd: 'python -m logicd run --config <path-it-prints>',
-    note: 'Foreground for testing. Use the printed NSSM / launchd / systemd recipe to install as a service.',
+    note: 'Foreground for testing. Use the printed NSSM / launchd / systemd recipe to install as a service. To try without a token first, run `python -m logicd demo-dog --start` instead.',
   },
 ];
 

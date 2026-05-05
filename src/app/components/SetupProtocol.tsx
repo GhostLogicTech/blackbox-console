@@ -20,27 +20,24 @@ const installSteps: Record<Platform, { label: string; icon: typeof Monitor; step
     label: 'Windows',
     icon: Monitor,
     steps: [
-      { desc: 'Clone the agent repo', cmd: 'git clone https://github.com/GhostLogicAI/blackbox-agent.git' },
-      { desc: 'Enter the directory', cmd: 'cd blackbox-agent' },
-      { desc: 'Run the installer (PowerShell as Admin)', cmd: '.\\install\\windows\\install.ps1' },
+      { desc: 'Install the agent (Python ≥ 3.11)', cmd: 'pip install --upgrade ghostlogic-agent-watchdog' },
+      { desc: 'Enroll with the token from your invite email', cmd: 'python -m logicd enroll --token <YOUR_TOKEN>' },
     ],
   },
   macos: {
     label: 'macOS',
     icon: Globe,
     steps: [
-      { desc: 'Clone the agent repo', cmd: 'git clone https://github.com/GhostLogicAI/blackbox-agent.git' },
-      { desc: 'Enter the directory', cmd: 'cd blackbox-agent' },
-      { desc: 'Run the installer', cmd: 'bash install/mac/install.sh' },
+      { desc: 'Install the agent (Python ≥ 3.11)', cmd: 'pip install --upgrade ghostlogic-agent-watchdog' },
+      { desc: 'Enroll with the token from your invite email', cmd: 'python -m logicd enroll --token <YOUR_TOKEN>' },
     ],
   },
   linux: {
     label: 'Linux',
     icon: Server,
     steps: [
-      { desc: 'Clone the agent repo', cmd: 'git clone https://github.com/GhostLogicAI/blackbox-agent.git' },
-      { desc: 'Enter the directory', cmd: 'cd blackbox-agent' },
-      { desc: 'Run the installer', cmd: 'sudo bash install/linux/install.sh' },
+      { desc: 'Install the agent (Python ≥ 3.11)', cmd: 'pip install --upgrade ghostlogic-agent-watchdog' },
+      { desc: 'Enroll with the token from your invite email', cmd: 'python -m logicd enroll --token <YOUR_TOKEN>' },
     ],
   },
 };
@@ -201,7 +198,12 @@ export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
                   </div>
                 ))}
                 <p className="text-xs text-zinc-600 ml-7 pt-1">
-                  The installer sets everything up. When it finishes, the agent prints your <code className="text-app-teal-accent/60">glk_</code> API key — copy it for the next step.
+                  Enrollment writes a locked config and prints your <code className="text-app-teal-accent/60">gl_agent_</code> API key — copy it for the next step.
+                </p>
+                <p className="text-xs text-zinc-600 ml-7">
+                  Just want to try it without a token? Run{' '}
+                  <code className="text-app-teal-accent/60">python -m logicd demo-dog --start</code>{' '}
+                  and open <a href="/demo" className="underline hover:text-zinc-400">/demo</a>.
                 </p>
               </div>
 
