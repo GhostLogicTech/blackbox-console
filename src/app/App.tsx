@@ -18,6 +18,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { hasTenantKey, hasAdminKey, clearKeys } from '../api/client';
 
 const App: React.FC = () => {
+  const isAuthRoute = typeof window !== 'undefined'
+    && (window.location.pathname === '/auth' || window.location.pathname.startsWith('/auth/'));
   const [activeTab, setActiveTab] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [selectedCapsuleId, setSelectedCapsuleId] = useState<string | null>(null);
@@ -27,7 +29,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
-    if (hasTenantKey()) {
+    if (!isAuthRoute && hasTenantKey()) {
       setIsInitialized(true);
     }
     setIsAdmin(hasAdminKey());
@@ -40,7 +42,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isAuthRoute]);
 
   const handleInitializationComplete = () => {
     setIsInitialized(true);
