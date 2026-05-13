@@ -1,329 +1,275 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Terminal as TerminalIcon, Key, ShieldCheck,
-  ChevronRight, Copy, Check, Server, Wifi, ArrowRight,
-  Monitor, Globe
+  ArrowRight,
+  CheckCircle2,
+  Mail,
+  MonitorCheck,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Button, cn } from './ui/Library';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { setTenantKey, setAdminKey, getMe, getEndpoints } from '../../api/client';
+import {
+  hasTenantKey,
+  requestEnrollmentInstallLink,
+  type EnrollmentRequestResult,
+} from '../../api/client';
 
 interface SetupProtocolProps {
   onComplete: () => void;
 }
 
-type Platform = 'windows' | 'linux' | 'macos';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const installSteps: Record<Platform, { label: string; icon: typeof Monitor; steps: { desc: string; cmd: string }[] }> = {
-  windows: {
-    label: 'Windows',
-    icon: Monitor,
-    steps: [
-      { desc: 'Install the agent (Python ≥ 3.11)', cmd: 'pip install --upgrade ghostlogic-agent-watchdog' },
-      { desc: 'Enroll with the token from your invite email', cmd: 'python -m logicd enroll --token <YOUR_TOKEN>' },
-    ],
-  },
-  macos: {
-    label: 'macOS',
-    icon: Globe,
-    steps: [
-      { desc: 'Install the agent (Python ≥ 3.11)', cmd: 'pip install --upgrade ghostlogic-agent-watchdog' },
-      { desc: 'Enroll with the token from your invite email', cmd: 'python -m logicd enroll --token <YOUR_TOKEN>' },
-    ],
-  },
-  linux: {
-    label: 'Linux',
-    icon: Server,
-    steps: [
-      { desc: 'Install the agent (Python ≥ 3.11)', cmd: 'pip install --upgrade ghostlogic-agent-watchdog' },
-      { desc: 'Enroll with the token from your invite email', cmd: 'python -m logicd enroll --token <YOUR_TOKEN>' },
-    ],
-  },
-};
+type SubmitState = 'idle' | 'loading' | 'success' | 'error';
+
+const trustItems = [
+  'No permanent API keys are shown in the browser.',
+  'Install links are one-time use.',
+  'Links expire after 24 hours.',
+  'The agent key is created only during local enrollment.',
+  'Open PowerShell as Administrator before enrolling the agent.',
+];
+
+const proofItems = [
+  'Captures endpoint telemetry from agent workstations.',
+  'Writes local config to C:\\ProgramData\\GhostLogic\\agents\\logicd.toml.',
+  'Sends tamper-evident events into the Blackbox dashboard.',
+];
 
 export const SetupProtocol: React.FC<SetupProtocolProps> = ({ onComplete }) => {
-  const [step, setStep] = useState(1);
-  const [apiKey, setApiKey] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState('');
-  const [tenantInfo, setTenantInfo] = useState<{ tenant_id: string; name: string } | null>(null);
-  const [endpointData, setEndpointData] = useState<any[]>([]);
-  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
-  const [platform, setPlatform] = useState<Platform>(() => {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes('win')) return 'windows';
-    if (ua.includes('mac')) return 'macos';
-    return 'linux';
-  });
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [email, setEmail] = useState('');
+  const [company, setCompany] = useState('');
+  const [deviceLabel, setDeviceLabel] = useState('');
+  const [submitState, setSubmitState] = useState<SubmitState>('idle');
+  const [message, setMessage] = useState('');
+  const [servicePending, setServicePending] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  const canOpenDashboard = useMemo(() => hasTenantKey(), []);
 
-  const handleCopy = (cmd: string) => {
-    navigator.clipboard.writeText(cmd);
-    setCopiedCmd(cmd);
-    toast.success('Copied — paste into your terminal', { duration: 3000 });
-    setTimeout(() => setCopiedCmd(null), 2000);
+  const setFailure = (result: Extract<EnrollmentRequestResult, { ok: false }>) => {
+    setSubmitState('error');
+    setMessage(result.message);
+    setServicePending(result.error === 'unavailable');
   };
 
-  const handleVerifyKey = async () => {
-    if (!apiKey.trim()) return;
-    setIsVerifying(true);
-    setVerifyError('');
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedEmail = email.trim();
 
-    if (apiKey.startsWith('glk_admin_')) {
-      setAdminKey(apiKey.trim());
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setSubmitState('error');
+      setServicePending(false);
+      setMessage('Enter a valid email address.');
+      return;
     }
-    setTenantKey(apiKey.trim());
 
-    const res = await getMe();
-    if (res.ok && res.data) {
-      setTenantInfo({ tenant_id: res.data.tenant_id, name: res.data.name });
-      toast.success(`Connected as ${res.data.name}`);
-      setStep(3);
-      startEndpointPolling();
-    } else {
-      setVerifyError(res.error || 'Invalid key');
-      toast.error('Key verification failed');
+    setSubmitState('loading');
+    setServicePending(false);
+    setMessage('Sending install link...');
+
+    const result = await requestEnrollmentInstallLink({
+      email: trimmedEmail,
+      company,
+      device_label: deviceLabel,
+    });
+
+    if (result.ok) {
+      setSubmitState('success');
+      setServicePending(false);
+      setMessage('Check your email. Your one-time Windows install link expires in 24 hours.');
+      toast.success('Install link requested');
+      return;
     }
-    setIsVerifying(false);
+
+    setFailure(result);
   };
 
-  const startEndpointPolling = () => {
-    const poll = async () => {
-      const res = await getEndpoints();
-      if (res.ok && res.data && res.data.endpoints.length > 0) {
-        setEndpointData(res.data.endpoints);
-      }
-    };
-    poll();
-    pollRef.current = setInterval(poll, 5000);
+  const handleDashboardClick = () => {
+    if (canOpenDashboard) {
+      onComplete();
+      return;
+    }
+    toast.info('Dashboard opens after this browser has an existing session.');
   };
-
-  const handleComplete = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    onComplete();
-  };
-
-  const stepLabels = ['Install', 'Connect', 'Verify'];
-  const currentPlatform = installSteps[platform];
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="fixed inset-0 z-[100] bg-app-bg flex items-center justify-center p-4 overflow-y-auto"
+      exit={{ opacity: 0, scale: 0.98 }}
+      className="fixed inset-0 z-[100] bg-app-bg text-app-text-primary overflow-y-auto"
     >
-      <div className="w-full max-w-2xl my-auto">
-        {/* Progress bar */}
-        <div className="flex items-center gap-4 mb-10">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-3 flex-1">
-              <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all",
-                step >= s
-                  ? "bg-app-teal-accent text-black border-app-teal-accent"
-                  : "bg-app-surface-2 text-zinc-500 border-app-border"
-              )}>
-                {step > s ? <Check size={14} /> : s}
-              </div>
-              <span className={cn(
-                "text-xs font-bold uppercase tracking-widest hidden sm:inline",
-                step >= s ? "text-app-teal-accent" : "text-zinc-600"
-              )}>
-                {stepLabels[s - 1]}
-              </span>
-              {s < 3 && <div className={cn("flex-1 h-px", step > s ? "bg-app-teal-accent" : "bg-app-border")} />}
-            </div>
-          ))}
-        </div>
+      <main className="min-h-screen">
+        <section className="relative isolate min-h-screen overflow-hidden border-b border-app-border">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(52,211,153,0.16),transparent_34%),linear-gradient(135deg,#09090b_0%,#121214_58%,#06120f_100%)]" />
+          <div className="absolute inset-y-0 right-0 -z-10 hidden w-1/2 border-l border-white/5 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0))] lg:block" />
 
-        <AnimatePresence mode="wait">
-          {/* ── Step 1: Install the Agent ── */}
-          {step === 1 && (
-            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Install the Agent</h1>
-                <p className="mt-3 text-zinc-500 text-lg">Run these commands on the machine you want to monitor. The agent will print your API key when it starts.</p>
+          <div className="mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 gap-10 px-5 py-8 sm:px-8 lg:grid-cols-[1.02fr_0.98fr] lg:px-12">
+            <div className="flex flex-col justify-center pb-4 pt-6 lg:py-16">
+              <div className="mb-8 inline-flex w-fit items-center gap-2 border border-app-teal-accent/20 bg-app-teal-accent/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-app-teal-accent">
+                <Sparkles size={14} />
+                Agent onboarding
               </div>
 
-              {/* Platform tabs */}
-              <div className="flex gap-2">
-                {(Object.keys(installSteps) as Platform[]).map((p) => {
-                  const Icon = installSteps[p].icon;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPlatform(p)}
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all",
-                        platform === p
-                          ? "bg-app-teal-accent/10 text-app-teal-accent border-app-teal-accent/30"
-                          : "bg-app-surface-2 text-zinc-500 border-app-border hover:text-zinc-300 hover:border-zinc-600"
-                      )}
-                    >
-                      <Icon size={16} />
-                      {installSteps[p].label}
-                    </button>
-                  );
-                })}
-              </div>
+              <h1 className="max-w-3xl text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Install GhostLogic Agent
+              </h1>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300 sm:text-xl">
+                Start capturing tamper-evident endpoint telemetry in minutes. Enter your email and we&apos;ll send a one-time Windows install link. Open PowerShell as Administrator before running it.
+              </p>
 
-              {/* Commands */}
-              <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
-                <div className="flex items-center gap-3 mb-1">
-                  <TerminalIcon size={16} className="text-app-teal-accent" />
-                  <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Open a terminal and run</span>
-                </div>
-                {currentPlatform.steps.map((s, i) => (
-                  <div key={`${platform}-${i}`} className="space-y-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-5 h-5 rounded-full bg-app-teal-accent/15 flex items-center justify-center text-[10px] font-bold text-app-teal-accent shrink-0">
-                        {i + 1}
-                      </div>
-                      <span className="text-xs text-zinc-400">{s.desc}</span>
-                    </div>
-                    <div className="bg-black rounded-lg p-3 font-mono text-xs sm:text-sm text-app-teal-accent flex items-center justify-between gap-2 ml-7">
-                      <code className="overflow-x-auto whitespace-nowrap scrollbar-hide">{s.cmd}</code>
-                      <button onClick={() => handleCopy(s.cmd)} className="shrink-0 p-1.5 text-zinc-500 hover:text-white transition-colors">
-                        {copiedCmd === s.cmd ? <Check size={14} className="text-app-teal-accent" /> : <Copy size={14} />}
-                      </button>
-                    </div>
+              <div className="mt-8 grid max-w-2xl gap-3 text-sm text-zinc-400 sm:grid-cols-2">
+                {proofItems.map(item => (
+                  <div key={item} className="flex items-start gap-3 border-l border-app-border pl-4">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-app-teal-accent" />
+                    <span>{item}</span>
                   </div>
                 ))}
-                <p className="text-xs text-zinc-600 ml-7 pt-1">
-                  Enrollment writes a locked config and prints your <code className="text-app-teal-accent/60">gl_agent_</code> API key — copy it for the next step.
-                </p>
-                <p className="text-xs text-zinc-600 ml-7">
-                  Just want to try it without a token? Run{' '}
-                  <code className="text-app-teal-accent/60">python -m logicd demo-dog --start</code>{' '}
-                  and open <a href="/demo" className="underline hover:text-zinc-400">/demo</a>.
-                </p>
               </div>
 
-              <div className="flex justify-end">
-                <Button onClick={() => setStep(2)}>
-                  I have my key <ChevronRight size={16} />
-                </Button>
-              </div>
-            </motion.div>
-          )}
+              <button
+                type="button"
+                onClick={handleDashboardClick}
+                className="mt-8 inline-flex w-fit items-center gap-2 text-sm font-bold text-zinc-400 transition-colors hover:text-white"
+              >
+                View Dashboard <ArrowRight size={15} />
+              </button>
+            </div>
 
-          {/* ── Step 2: Paste key from terminal ── */}
-          {step === 2 && (
-            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Connect Your Key</h1>
-                <p className="mt-3 text-zinc-500 text-lg">Paste the API key the agent printed in your terminal.</p>
-              </div>
-
-              <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Key size={18} className="text-app-teal-accent" />
-                  <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">API Key</span>
-                </div>
-                <input
-                  type="text"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyKey()}
-                  placeholder="glk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full bg-black border border-app-border rounded-xl px-4 py-3 font-mono text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-app-teal-accent/50"
-                  autoFocus
-                />
-                {verifyError && (
-                  <p className="text-sm text-red-400">{verifyError}</p>
-                )}
-                <p className="text-xs text-zinc-600">
-                  This connects your browser to the data your agent is collecting.
-                </p>
-              </div>
-
-              <div className="flex justify-between">
-                <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
-                <Button onClick={handleVerifyKey} disabled={isVerifying || !apiKey.trim()}>
-                  {isVerifying ? 'Verifying...' : 'Verify & Connect'} <ArrowRight size={16} />
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Step 3: Verified / waiting for telemetry ── */}
-          {step === 3 && (
-            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Console Online</h1>
-                <p className="mt-3 text-zinc-500 text-lg">
-                  Connected as <span className="text-app-teal-accent font-bold">{tenantInfo?.name || 'Unknown'}</span>
-                </p>
-              </div>
-
-              {/* Tenant info */}
-              <div className="bg-app-surface border border-app-teal-accent/20 rounded-2xl p-4 sm:p-6 space-y-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <ShieldCheck size={18} className="text-app-teal-accent" />
-                  <span className="text-[11px] font-bold text-app-teal-accent uppercase tracking-widest">Verified</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+            <div className="flex items-center pb-12 lg:py-16">
+              <div className="w-full border border-app-border bg-app-surface/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-7">
+                <div className="mb-6 flex items-center justify-between gap-4 border-b border-app-border pb-5">
                   <div>
-                    <p className="text-[10px] text-zinc-600 uppercase">Tenant</p>
-                    <p className="text-white font-mono mt-1">{tenantInfo?.name}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">Windows installer</p>
+                    <h2 className="mt-2 text-2xl font-bold text-white">Send Install Link</h2>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-zinc-600 uppercase">Tenant ID</p>
-                    <p className="text-zinc-400 font-mono mt-1 text-xs break-all">{tenantInfo?.tenant_id}</p>
+                  <div className="flex h-11 w-11 items-center justify-center bg-app-teal-accent text-black">
+                    <Mail size={20} />
                   </div>
                 </div>
-              </div>
 
-              {/* Live endpoints */}
-              {endpointData.length > 0 ? (
-                <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-app-teal-accent animate-pulse" />
-                    <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Live Endpoints Detected</span>
-                  </div>
-                  {endpointData.map((ep: any) => (
-                    <div key={ep.endpoint_name} className="p-3 sm:p-4 bg-app-bg border border-app-border rounded-xl">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold text-white truncate">{ep.endpoint_name}</span>
-                        <span className="text-[10px] font-mono text-zinc-600 shrink-0">{ep.event_count?.toLocaleString()} events</span>
-                      </div>
-                      {ep.latest?.system && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs font-mono text-zinc-500">
-                          <span>CPU: {ep.latest.system.cpu_percent}%</span>
-                          <span>RAM: {ep.latest.system.ram_percent}%</span>
-                          <span>{ep.latest.system.os} {ep.latest.system.machine}</span>
-                        </div>
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">Email</span>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={email}
+                      onChange={event => setEmail(event.target.value)}
+                      placeholder="user@example.com"
+                      className="w-full border border-app-border bg-black px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-app-teal-accent/70"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">Company</span>
+                    <input
+                      type="text"
+                      autoComplete="organization"
+                      value={company}
+                      onChange={event => setCompany(event.target.value)}
+                      placeholder="Acme Inc"
+                      className="w-full border border-app-border bg-black px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-app-teal-accent/70"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">Device label</span>
+                    <input
+                      type="text"
+                      value={deviceLabel}
+                      onChange={event => setDeviceLabel(event.target.value)}
+                      placeholder="Adam Laptop"
+                      className="w-full border border-app-border bg-black px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-zinc-700 focus:border-app-teal-accent/70"
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={submitState === 'loading'}
+                    className="flex w-full items-center justify-center gap-2 bg-app-teal-accent px-5 py-3.5 text-sm font-bold text-black transition-colors hover:bg-app-teal-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {submitState === 'loading' ? 'Sending install link...' : 'Send Install Link'}
+                    <ArrowRight size={16} />
+                  </button>
+
+                  {message && (
+                    <div
+                      role="status"
+                      className={[
+                        'border px-4 py-3 text-sm',
+                        submitState === 'success'
+                          ? 'border-app-teal-accent/30 bg-app-teal-accent/10 text-app-teal-accent'
+                          : submitState === 'error'
+                            ? 'border-app-red-alert/30 bg-app-red-alert/10 text-red-300'
+                            : 'border-app-border bg-black text-zinc-400',
+                      ].join(' ')}
+                    >
+                      {message}
+                      {servicePending && (
+                        <span className="mt-2 block text-xs text-amber-300">
+                          Backend endpoint pending: POST /api/v1/enrollment/request is not live yet.
+                        </span>
                       )}
+                    </div>
+                  )}
+                </form>
+
+                <div className="mt-6 grid gap-3 border-t border-app-border pt-5">
+                  {trustItems.map(item => (
+                    <div key={item} className="flex items-start gap-3 text-sm text-zinc-400">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-app-teal-accent" />
+                      <span>{item}</span>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-6 text-center">
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    <Wifi size={18} className="text-zinc-500 animate-pulse" />
-                    <span className="text-sm text-zinc-500">Waiting for agent telemetry...</span>
-                  </div>
-                  <p className="text-xs text-zinc-600">Once the agent starts sending data, it will appear here.</p>
-                </div>
-              )}
-
-              <div className="flex justify-end">
-                <Button onClick={handleComplete}>
-                  Open Console <ArrowRight size={16} />
-                </Button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 lg:grid-cols-3 lg:px-12">
+          <div className="lg:col-span-1">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-app-teal-accent">What happens next</p>
+            <h2 className="mt-3 text-3xl font-bold text-white">Local enrollment, dashboard visibility.</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3 lg:col-span-2">
+            {[
+              ['1', 'Email link', 'A one-time Windows install link is sent to the requested inbox. The token is one-time use.'],
+              ['2', 'Enroll first', 'Run PowerShell as Administrator, enroll with the token, then run logicd install.'],
+              ['3', 'Telemetry online', 'If enrollment fails, request a fresh token. Once installed, logicd sends endpoint events to the dashboard.'],
+            ].map(([step, title, body]) => (
+              <div key={step} className="border border-app-border bg-app-surface p-5">
+                <div className="mb-4 flex h-9 w-9 items-center justify-center bg-app-surface-2 text-sm font-bold text-app-teal-accent">
+                  {step}
+                </div>
+                <h3 className="text-lg font-bold text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-app-border bg-app-surface/40">
+          <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-12">
+            <div className="flex items-center gap-3">
+              <MonitorCheck className="h-5 w-5 text-app-teal-accent" />
+              <p className="text-sm text-zinc-400">
+                Existing browser sessions can open the dashboard directly. New installs start with the email link.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDashboardClick}
+              className="inline-flex items-center justify-center gap-2 border border-app-border px-4 py-2 text-sm font-bold text-white transition-colors hover:border-app-teal-accent/50"
+            >
+              View Dashboard <ArrowRight size={15} />
+            </button>
+          </div>
+        </section>
+      </main>
     </motion.div>
   );
 };

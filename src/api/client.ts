@@ -1,4 +1,9 @@
-const BASE_URL = (import.meta.env.VITE_BLACKBOX_URL || 'https://api.ghostlogic.tech').replace(/\/$/, '');
+const BASE_URL = (
+  import.meta.env.VITE_API_BASE
+  || import.meta.env.VITE_BLACKBOX_URL
+  || 'https://api.ghostlogic.tech'
+).replace(/\/$/, '');
+const MOCK_ENROLLMENT_REQUEST = import.meta.env.DEV && import.meta.env.VITE_MOCK_ENROLLMENT_REQUEST === 'true';
 
 export function getTenantKey(): string | null {
   return localStorage.getItem('blackbox_tenant_key');
@@ -89,6 +94,69 @@ export async function getHealth() {
 
 export async function getInfo() {
   return request<{ service: string; version: string; status: string }>('/api/v1/info');
+}
+
+export type EnrollmentRequestPayload = {
+  email: string;
+  company?: string;
+  device_label?: string;
+};
+
+export type EnrollmentRequestResult =
+  | { ok: true; status: number; message: string }
+  | { ok: false; status: number; error: 'invalid_email' | 'rate_limited' | 'unavailable' | 'generic'; message: string };
+
+export async function requestEnrollmentInstallLink(
+  payload: EnrollmentRequestPayload,
+): Promise<EnrollmentRequestResult> {
+  const trimmedEmail = payload.email.trim();
+  const body = {
+    email: trimmedEmail,
+    company: payload.company?.trim() || undefined,
+    device_label: payload.device_label?.trim() || undefined,
+  };
+
+  if (MOCK_ENROLLMENT_REQUEST) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return {
+      ok: true,
+      status: 200,
+      message: 'Check your email for your one-time install link.',
+    };
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/enrollment/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      let message = 'Check your email for your one-time install link.';
+      try {
+        const data = await res.json();
+        if (typeof data?.message === 'string' && data.message.trim()) {
+          message = data.message;
+        }
+      } catch { /* success without JSON still counts */ }
+      return { ok: true, status: res.status, message };
+    }
+
+    if (res.status === 400 || res.status === 422) {
+      return { ok: false, status: res.status, error: 'invalid_email', message: 'Enter a valid email address.' };
+    }
+    if (res.status === 429) {
+      return { ok: false, status: res.status, error: 'rate_limited', message: 'Too many requests. Try again later.' };
+    }
+    if (res.status === 404 || res.status >= 500) {
+      return { ok: false, status: res.status, error: 'unavailable', message: 'Enrollment service is unavailable right now.' };
+    }
+
+    return { ok: false, status: res.status, error: 'generic', message: 'Could not send install link. Try again.' };
+  } catch {
+    return { ok: false, status: 0, error: 'unavailable', message: 'Enrollment service is unavailable right now.' };
+  }
 }
 
 // ── Tenant endpoints ──

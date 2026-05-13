@@ -5,14 +5,8 @@ import { toast } from 'sonner';
 import { cn } from './ui/Library';
 
 /**
- * Modal that walks an operator through attaching a new device:
- *   1. pip install --upgrade ghostlogic-agent-watchdog   (Python ≥ 3.11)
- *   2. python -m logicd enroll --token <YOUR_TOKEN>      (writes config,
- *                                                         prints API key)
- *
- * Token-based enrollment is the production path. Tokens come from the
- * dashboard's invite flow. For a no-token try-out: use `demo-dog`
- * against the public ghostlogic-demo tenant — see /demo.
+ * Modal that sends operators back to the public self-serve installer request.
+ * Browser UI never displays install tokens or permanent agent keys.
  */
 
 interface AttachAgentWatchdogProps {
@@ -25,19 +19,19 @@ const REPO_URL = 'https://github.com/adam-scott-thomas/ghostlogic-agent-watchdog
 
 const STEPS = [
   {
-    label: '1. Install',
-    cmd: 'pip install --upgrade ghostlogic-agent-watchdog',
-    note: 'Python ≥ 3.11. Works on Windows, macOS, Linux.',
+    label: '1. Request link',
+    cmd: 'Open the front page and send yourself a Windows install link.',
+    note: 'The link is sent by email, expires after 24 hours, and contains a one-time enrollment token.',
   },
   {
-    label: '2. Enroll',
-    cmd: 'python -m logicd enroll --token <YOUR_TOKEN>',
-    note: 'Writes a locked config under the platform-native data dir, fetches a scoped agent key, prints the gl_agent_ API key + the run command. Use the token from your invite email.',
+    label: '2. Enroll locally',
+    cmd: 'Open PowerShell as Administrator, then run: python -m pip install --upgrade ghostlogic-agent-watchdog; logicd enroll --token <gl_enroll token> --endpoint-name $env:COMPUTERNAME --agent-id logicd',
+    note: 'Enrollment must happen before install. It writes C:\\ProgramData\\GhostLogic\\agents\\logicd.toml locally.',
   },
   {
-    label: '3. Run',
-    cmd: 'python -m logicd run --config <path-it-prints>',
-    note: 'Foreground for testing. Use the printed NSSM / launchd / systemd recipe to install as a service. To try without a token first, run `python -m logicd demo-dog --start` instead.',
+    label: '3. Install service',
+    cmd: 'logicd install',
+    note: 'If enrollment fails, request a fresh token. After install, return to Endpoints and verify telemetry.',
   },
 ];
 
@@ -94,8 +88,9 @@ export const AttachAgentWatchdog: React.FC<AttachAgentWatchdogProps> = ({ open, 
             {/* Body */}
             <div className="px-6 py-5 space-y-4">
               <p className="text-sm text-zinc-400">
-                Run these on the device you want to capture from. Three commands, no
-                installer download. The daemon is a Python wheel published to PyPI.
+                Send an install link from the public front page, then run the emailed
+                PowerShell commands from an Administrator PowerShell window on the
+                Windows device you want to capture from.
               </p>
 
               {STEPS.map((step, i) => (
@@ -135,11 +130,10 @@ export const AttachAgentWatchdog: React.FC<AttachAgentWatchdogProps> = ({ open, 
 
               <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-3 mt-2">
                 <p className="text-xs text-amber-200/90">
-                  <strong>API key:</strong> step 2 prompts for an API key
-                  (<code className="font-mono">gl_agent_…</code>). Use a key from your
-                  Settings panel or the operator-issued list. Token-based{' '}
-                  <code className="font-mono">logicd enroll --token</code> lands once
-                  the OAuth dashboard is live.
+                  <strong>Safety:</strong> the browser never shows install tokens or
+                  permanent agent keys. The scoped agent key is created only during
+                  local enrollment on the device. Tokens are one-time use; request a
+                  fresh link if enrollment fails.
                 </p>
               </div>
 
