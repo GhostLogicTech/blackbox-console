@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Monitor, Database, Code2 } from 'lucide-react';
+import { LayoutDashboard, Monitor, Database, FileSearch, Code2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from './ui/Library';
 
@@ -14,6 +14,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab })
     { id: 'endpoints', label: 'Endpoints', icon: Monitor },
     { id: 'claude', label: 'Claude', icon: Code2 },
     { id: 'capsules', label: 'Vault', icon: Database },
+    { id: 'investigations', label: 'Reports', icon: FileSearch },
   ];
 
   return (
@@ -24,7 +25,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab })
             key={item.id}
             onClick={() => setActiveTab(item.id)}
             className={cn(
-              "flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all relative",
+              "flex flex-col items-center gap-1 py-2 px-2 sm:px-4 rounded-xl transition-all relative",
               activeTab === item.id ? "text-app-teal-accent" : "text-zinc-600"
             )}
           >

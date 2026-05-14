@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Command, Zap, Database, ShieldCheck, Terminal, Settings, Cpu } from 'lucide-react';
+import { Search, Zap, Database, ShieldCheck, Terminal, Settings, Cpu, FileSearch } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CommandPaletteProps {
@@ -27,6 +27,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
     { id: 'dashboard', label: 'Go to Overview', icon: Database, category: 'Navigation' },
     { id: 'ingest', label: 'Ingest New Event', icon: Zap, category: 'Actions' },
     { id: 'seal', label: 'Seal Current Buffer', icon: ShieldCheck, category: 'Actions' },
+    { id: 'investigations', label: 'Run Investigation', icon: FileSearch, category: 'Actions' },
     { id: 'capsules', label: 'Browse All Capsules', icon: Terminal, category: 'Navigation' },
     { id: 'agent', label: 'Download Agent', icon: Cpu, category: 'Navigation' },
     { id: 'settings', label: 'System Settings', icon: Settings, category: 'Admin' },

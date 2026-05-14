@@ -8,6 +8,7 @@ import { Claude } from './components/Claude';
 import { Ingest } from './components/Ingest';
 import { Seal } from './components/Seal';
 import { Capsules } from './components/Capsules';
+import { Investigations } from './components/Investigations';
 import { Admin } from './components/Admin';
 import { Settings } from './components/Settings';
 import { CapsuleDetail } from './components/CapsuleDetail';
@@ -76,6 +77,7 @@ const App: React.FC = () => {
       case 'ingest': return <Ingest />;
       case 'seal': return <Seal />;
       case 'capsules': return <Capsules onSelectCapsule={handleSelectCapsule} />;
+      case 'investigations': return <Investigations />;
       case 'admin': return <Admin />;
       case 'settings': return <Settings />;
       case 'capsule-detail':
