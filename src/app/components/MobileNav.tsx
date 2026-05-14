@@ -14,7 +14,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab })
     { id: 'endpoints', label: 'Endpoints', icon: Monitor },
     { id: 'claude', label: 'Claude', icon: Code2 },
     { id: 'capsules', label: 'Vault', icon: Database },
-    { id: 'investigations', label: 'Reports', icon: FileSearch },
+    { id: 'investigations', label: 'Timeline', icon: FileSearch },
   ];
 
   return (

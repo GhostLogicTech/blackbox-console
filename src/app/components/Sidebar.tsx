@@ -25,7 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, colla
     { id: 'endpoints', label: 'Endpoints', icon: Monitor },
     { id: 'claude', label: 'Claude', icon: Code2 },
     { id: 'capsules', label: 'Vault', icon: Database },
-    { id: 'investigations', label: 'Investigations', icon: FileSearch },
+    { id: 'investigations', label: 'Timeline', icon: FileSearch },
   ];
 
   return (
