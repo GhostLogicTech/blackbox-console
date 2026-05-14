@@ -61,7 +61,7 @@ function relativeTime(value?: string): string {
 }
 
 function firstString(data: Record<string, unknown> | undefined, keys: string[]): string {
-  if (!data) return '';
+  if (!data || typeof data !== 'object') return '';
   for (const key of keys) {
     const value = data[key];
     if (typeof value === 'string' && value.trim()) return value.trim();
@@ -71,7 +71,7 @@ function firstString(data: Record<string, unknown> | undefined, keys: string[]):
 }
 
 function detectSource(event: RecentEvent): string {
-  const data = event.data || {};
+  const data = event.data && typeof event.data === 'object' ? event.data : {};
   const raw = [
     firstString(data, ['source', 'adapter', 'tool', 'client', 'app']),
     event.event_type,
@@ -84,7 +84,7 @@ function detectSource(event: RecentEvent): string {
 }
 
 function summarizeEvent(event: RecentEvent): string {
-  const data = event.data || {};
+  const data = event.data && typeof event.data === 'object' ? event.data : {};
   const direct = firstString(data, [
     'summary',
     'title',
@@ -102,10 +102,15 @@ function summarizeEvent(event: RecentEvent): string {
 }
 
 function normalizeTimeline(events: RecentEvent[]): TimelineItem[] {
-  return events
+  return (Array.isArray(events) ? events : [])
     .filter((event) => {
       const source = detectSource(event).toLowerCase();
-      const searchable = JSON.stringify(event.data || {}).toLowerCase();
+      let searchable = '';
+      try {
+        searchable = JSON.stringify(event.data || {}).toLowerCase();
+      } catch {
+        searchable = '';
+      }
       return event.agent_id === 'logicd'
         || source.includes('claude')
         || source.includes('codex')
@@ -115,11 +120,18 @@ function normalizeTimeline(events: RecentEvent[]): TimelineItem[] {
     .map((event) => ({
       ...event,
       sourceLabel: detectSource(event),
-      sessionId: firstString(event.data, ['session_id', 'session', 'conversation_id', 'trace_id', 'run_id']),
+      sessionId: firstString(
+        event.data && typeof event.data === 'object' ? event.data : undefined,
+        ['session_id', 'session', 'conversation_id', 'trace_id', 'run_id'],
+      ),
       summary: summarizeEvent(event),
-      eventTime: event.ingested_at || event.timestamp,
+      eventTime: event.ingested_at || event.timestamp || '',
     }))
-    .sort((a, b) => new Date(b.eventTime).getTime() - new Date(a.eventTime).getTime());
+    .sort((a, b) => {
+      const aTime = new Date(a.eventTime).getTime();
+      const bTime = new Date(b.eventTime).getTime();
+      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+    });
 }
 
 export const Investigations: React.FC = () => {
@@ -144,10 +156,10 @@ export const Investigations: React.FC = () => {
     ]);
 
     if (endpointsRes.ok && endpointsRes.data) {
-      setEndpoints(endpointsRes.data.endpoints);
+      setEndpoints(Array.isArray(endpointsRes.data.endpoints) ? endpointsRes.data.endpoints : []);
     }
     if (eventsRes.ok && eventsRes.data) {
-      setEvents(eventsRes.data.events);
+      setEvents(Array.isArray(eventsRes.data.events) ? eventsRes.data.events : []);
     }
 
     const message = endpointsRes.error || eventsRes.error;
